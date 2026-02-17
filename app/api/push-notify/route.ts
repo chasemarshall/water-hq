@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import webpush from "web-push";
-
-const FIREBASE_DB_URL = "https://shower-tracker-276d6-default-rtdb.firebaseio.com";
+import { adminDb } from "@/lib/firebaseAdmin";
 
 // Force this route to be dynamic (never pre-rendered at build time)
 export const dynamic = "force-dynamic";
@@ -29,13 +28,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing title or body" }, { status: 400 });
     }
 
-    // Read all push subscriptions from Firebase
-    const res = await fetch(`${FIREBASE_DB_URL}/pushSubscriptions.json`);
-    if (!res.ok) {
-      return NextResponse.json({ error: "Failed to read subscriptions" }, { status: 500 });
-    }
+    // Read all push subscriptions from Firebase via Admin SDK
+    const snapshot = await adminDb.ref("pushSubscriptions").once("value");
+    const data: Record<string, PushRecord> | null = snapshot.val();
 
-    const data: Record<string, PushRecord> | null = await res.json();
     if (!data) {
       return NextResponse.json({ sent: 0 });
     }
@@ -44,7 +40,7 @@ export async function POST(req: NextRequest) {
     const staleKeys: string[] = [];
     let sent = 0;
 
-    const results = await Promise.allSettled(
+    await Promise.allSettled(
       Object.entries(data).map(async ([key, record]) => {
         // Skip the user who triggered the notification
         if (excludeUser && record.user === excludeUser) return;
@@ -66,13 +62,12 @@ export async function POST(req: NextRequest) {
 
     // Clean up stale subscriptions
     await Promise.allSettled(
-      staleKeys.map((key) =>
-        fetch(`${FIREBASE_DB_URL}/pushSubscriptions/${key}.json`, { method: "DELETE" }),
-      ),
+      staleKeys.map((key) => adminDb.ref(`pushSubscriptions/${key}`).remove()),
     );
 
     return NextResponse.json({ sent, cleaned: staleKeys.length });
-  } catch {
+  } catch (err) {
+    console.error("push-notify error:", err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
