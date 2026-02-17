@@ -7,7 +7,7 @@ import { ref, onValue, set, push, remove, query, orderByChild, endAt, get } from
 
 const USERS = ["Chase", "Livia", "A.J.", "Dad"];
 const SLOT_COLORS = ["slot-yolk", "slot-mint", "slot-sky", "slot-bubblegum"];
-const DURATIONS = [5, 10, 15, 20, 30];
+const DURATIONS = [15, 20, 30, 45, 60];
 const AUTO_RELEASE_SECONDS = 2700;
 
 interface ShowerStatus {
@@ -20,6 +20,7 @@ interface Slot {
   date: string;
   startTime: string;
   durationMinutes: number;
+  recurring?: boolean;
 }
 
 interface SlotsMap {
@@ -296,7 +297,7 @@ function TimeSlots({
 
   const todaySlots = slots
     ? Object.entries(slots)
-        .filter(([, s]) => s.date === today)
+        .filter(([, s]) => s.date === today || s.recurring)
         .filter(([, s]) => {
           const [h, m] = s.startTime.split(":").map(Number);
           const end = new Date();
@@ -350,6 +351,11 @@ function TimeSlots({
                 <div>
                   <span className="font-display text-base block">
                     {slot.user}
+                    {slot.recurring && (
+                      <span className="font-mono text-xs ml-2 bg-white/50 px-2 py-0.5 rounded-md">
+                        daily
+                      </span>
+                    )}
                   </span>
                   <span className="font-mono text-sm font-bold">
                     {formatTimeRange(slot.startTime, slot.durationMinutes)}
@@ -396,7 +402,9 @@ function ClaimModal({
   slots: SlotsMap | null;
 }) {
   const [time, setTime] = useState("");
+  const [date, setDate] = useState("");
   const [duration, setDuration] = useState(15);
+  const [recurring, setRecurring] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -407,25 +415,30 @@ function ClaimModal({
       setTime(
         `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`
       );
+      setDate(getToday());
       setDuration(15);
+      setRecurring(false);
     }
   }, [isOpen]);
 
   const handleClaim = () => {
-    if (!time) return;
+    if (!time || !date) return;
 
-    const today = getToday();
     const [newH, newM] = time.split(":").map(Number);
     const newStart = newH * 60 + newM;
     const newEnd = newStart + duration;
 
     if (slots) {
       const overlap = Object.values(slots).some((slot) => {
-        if (slot.date !== today) return false;
-        const [sh, sm] = slot.startTime.split(":").map(Number);
-        const sStart = sh * 60 + sm;
-        const sEnd = sStart + slot.durationMinutes;
-        return newStart < sEnd && newEnd > sStart;
+        if (slot.date !== date && !slot.recurring && !recurring) return false;
+        if (slot.date !== date && !slot.recurring && recurring) return false;
+        if (slot.date === date || slot.recurring || recurring) {
+          const [sh, sm] = slot.startTime.split(":").map(Number);
+          const sStart = sh * 60 + sm;
+          const sEnd = sStart + slot.durationMinutes;
+          return newStart < sEnd && newEnd > sStart;
+        }
+        return false;
       });
 
       if (overlap) {
@@ -436,9 +449,10 @@ function ClaimModal({
 
     push(ref(db, "slots"), {
       user: currentUser,
-      date: today,
+      date: date,
       startTime: time,
       durationMinutes: duration,
+      ...(recurring ? { recurring: true } : {}),
     });
 
     onClose();
@@ -448,7 +462,7 @@ function ClaimModal({
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="fixed inset-0 z-40 modal-backdrop flex items-end sm:items-center justify-center p-4"
+          className="fixed inset-0 z-40 modal-backdrop flex items-end sm:items-center justify-center"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -457,7 +471,7 @@ function ClaimModal({
           }}
         >
           <motion.div
-            className="brutal-card bg-paper rounded-2xl sm:rounded-2xl w-full max-w-md p-6 sm:p-8"
+            className="brutal-card bg-paper rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md max-h-[90dvh] overflow-y-auto p-6 sm:mx-4"
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
@@ -467,7 +481,22 @@ function ClaimModal({
               Claim a Slot
             </h3>
 
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-5">
+              {/* Date picker */}
+              <div>
+                <label className="font-mono text-sm font-bold uppercase tracking-wider block mb-2">
+                  Date
+                </label>
+                <input
+                  type="date"
+                  value={date}
+                  min={getToday()}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="brutal-input w-full rounded-xl"
+                />
+              </div>
+
+              {/* Start time */}
               <div>
                 <label className="font-mono text-sm font-bold uppercase tracking-wider block mb-2">
                   Start Time
@@ -480,15 +509,16 @@ function ClaimModal({
                 />
               </div>
 
+              {/* Duration */}
               <div>
                 <label className="font-mono text-sm font-bold uppercase tracking-wider block mb-2">
                   Duration
                 </label>
-                <div className="flex gap-2 flex-wrap">
+                <div className="grid grid-cols-5 gap-2">
                   {DURATIONS.map((d) => (
                     <button
                       key={d}
-                      className={`brutal-btn px-4 py-3 rounded-xl font-mono font-bold text-sm ${
+                      className={`brutal-btn py-3 rounded-xl font-mono font-bold text-sm ${
                         duration === d ? "bg-lime" : "bg-white"
                       }`}
                       onClick={() => setDuration(d)}
@@ -498,9 +528,28 @@ function ClaimModal({
                   ))}
                 </div>
               </div>
+
+              {/* Recurring toggle */}
+              <div>
+                <button
+                  className={`brutal-btn w-full py-4 rounded-xl font-mono font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-3 ${
+                    recurring ? "bg-lime" : "bg-white"
+                  }`}
+                  onClick={() => setRecurring(!recurring)}
+                >
+                  <span
+                    className={`inline-flex items-center justify-center w-6 h-6 border-3 border-ink rounded-md text-xs ${
+                      recurring ? "bg-ink text-white" : "bg-white"
+                    }`}
+                  >
+                    {recurring ? "✓" : ""}
+                  </span>
+                  Repeat Daily
+                </button>
+              </div>
             </div>
 
-            <div className="flex gap-3 mt-8">
+            <div className="flex gap-3 mt-6">
               <button
                 className="brutal-btn bg-white flex-1 py-4 rounded-xl font-display text-base uppercase"
                 onClick={onClose}
