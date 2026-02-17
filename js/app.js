@@ -93,6 +93,7 @@ function renderStatus(status) {
       const sec = elapsed % 60;
       timer.textContent = String(min).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
       if (elapsed >= 1800 && status.currentUser === user) {
+        clearInterval(timerInterval);
         stopShower();
       }
     }
