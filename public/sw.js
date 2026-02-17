@@ -10,7 +10,7 @@ self.addEventListener("activate", (event) => {
 
 // Handle push notifications from server
 self.addEventListener("push", (event) => {
-  let data = { title: "Shower Tracker", body: "Shower status changed" };
+  let data = { title: "\u{1F6BF} SHOWER", body: "Shower status changed" };
   try {
     if (event.data) {
       data = event.data.json();
@@ -27,22 +27,6 @@ self.addEventListener("push", (event) => {
       renotify: true,
     })
   );
-});
-
-// Listen for messages from the main app to show notifications (fallback)
-self.addEventListener("message", (event) => {
-  const { type, title, body } = event.data || {};
-  if (type === "SHOW_NOTIFICATION") {
-    event.waitUntil(
-      self.registration.showNotification(title, {
-        body,
-        icon: "/icon",
-        badge: "/icon",
-        tag: "shower-status",
-        renotify: true,
-      })
-    );
-  }
 });
 
 // Handle notification click → focus or open the app

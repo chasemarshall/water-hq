@@ -219,7 +219,7 @@ function StatusBanner({
       if (status?.startedAt) onAutoRelease(status.startedAt);
       set(ref(db, "status"), { currentUser: null, startedAt: null });
       if (status?.currentUser) {
-        sendPushNotification("Shower Free ✅", `${status.currentUser} is done — shower is free!`, status.currentUser);
+        sendPushNotification("🚿 SHOWER", `${status.currentUser} is done`, status.currentUser);
       }
     }
   }, [isMe, elapsed]);
@@ -303,7 +303,7 @@ function ShowerButton({
     if (isMe) {
       if (status?.startedAt) onEnd(status.startedAt);
       set(ref(db, "status"), { currentUser: null, startedAt: null });
-      sendPushNotification("Shower Free ✅", `${currentUser} is done — shower is free!`, currentUser);
+      sendPushNotification("🚿 SHOWER", `${currentUser} is done`, currentUser);
       return;
     }
 
@@ -327,7 +327,7 @@ function ShowerButton({
     }
 
     set(ref(db, "status"), { currentUser, startedAt: Date.now() });
-    sendPushNotification("Shower Occupied 🚿", `${currentUser} just started showering`, currentUser);
+    sendPushNotification("🚿 SHOWER", `${currentUser} started showering`, currentUser);
   };
 
   const label = isMe
@@ -955,29 +955,6 @@ async function sendPushNotification(title: string, body: string, excludeUser: st
   }
 }
 
-// Also show a local notification if the tab is open (for the receiving user)
-async function sendLocalNotification(title: string, body: string) {
-  if (typeof window === "undefined") return;
-  if (!("Notification" in window)) return;
-  if (Notification.permission !== "granted") return;
-
-  if ("serviceWorker" in navigator) {
-    try {
-      const reg = await navigator.serviceWorker.ready;
-      reg.active?.postMessage({ type: "SHOW_NOTIFICATION", title, body });
-      return;
-    } catch {
-      // Fall through to basic notification
-    }
-  }
-
-  try {
-    new Notification(title, { body, icon: "/icon" });
-  } catch {
-    // Safari/iOS may not support Notification constructor
-  }
-}
-
 // ============================================================
 // MAIN PAGE
 // ============================================================
@@ -991,7 +968,6 @@ export default function Home() {
   const [showModal, setShowModal] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [notifPermission, setNotifPermission] = useState<NotificationPermission | "unsupported">("unsupported");
-  const prevStatusRef = useRef<ShowerStatus | null | undefined>(undefined);
 
   // Request notification permission (called from button tap on iOS, or auto on other browsers)
   const requestNotifPermission = useCallback(async () => {
@@ -1052,40 +1028,6 @@ export default function Home() {
       subscribeToPush(currentUser);
     }
   }, [currentUser]);
-
-  // Show local notifications on status changes (for when the tab is open)
-  useEffect(() => {
-    // Skip the very first load (prevStatusRef is undefined)
-    if (prevStatusRef.current === undefined) {
-      prevStatusRef.current = status;
-      return;
-    }
-
-    const prev = prevStatusRef.current;
-    prevStatusRef.current = status;
-
-    if (!currentUser) return;
-
-    // Someone started showering
-    if (status?.currentUser && !prev?.currentUser) {
-      if (status.currentUser !== currentUser) {
-        sendLocalNotification(
-          "Shower Occupied 🚿",
-          `${status.currentUser} just started showering`
-        );
-      }
-    }
-
-    // Someone finished showering
-    if (!status?.currentUser && prev?.currentUser) {
-      if (prev.currentUser !== currentUser) {
-        sendLocalNotification(
-          "Shower Free ✅",
-          `${prev.currentUser} is done — shower is free!`
-        );
-      }
-    }
-  }, [status, currentUser]);
 
   // Firebase listeners
   useEffect(() => {
