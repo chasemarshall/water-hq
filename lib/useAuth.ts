@@ -8,7 +8,7 @@ import {
   signOut as firebaseSignOut,
   User,
 } from "firebase/auth";
-import { ref, get } from "firebase/database";
+import { ref, get, set } from "firebase/database";
 import { auth, googleProvider, db } from "./firebase";
 
 interface AuthState {
@@ -19,23 +19,36 @@ interface AuthState {
   signOut: () => Promise<void>;
 }
 
-async function isEmailAllowed(email: string): Promise<boolean> {
-  // Check grace period first
+async function checkAndWhitelistEmail(
+  email: string
+): Promise<{ allowed: boolean }> {
+  // Check whitelist first
+  const snap = await get(ref(db, "allowedEmails"));
+  const existing: string[] = [];
+  if (snap.exists()) {
+    const data = snap.val();
+    if (Array.isArray(data)) {
+      existing.push(...data);
+    } else {
+      existing.push(...(Object.values(data) as string[]));
+    }
+  }
+
+  if (existing.includes(email)) return { allowed: true };
+
+  // Not on whitelist — check grace period
   const graceSnap = await get(ref(db, "graceUntil"));
   if (graceSnap.exists()) {
     const graceUntil = graceSnap.val() as number;
-    if (Date.now() < graceUntil) return true;
+    if (Date.now() < graceUntil) {
+      // Auto-add to whitelist permanently
+      existing.push(email);
+      await set(ref(db, "allowedEmails"), existing);
+      return { allowed: true };
+    }
   }
 
-  // Check whitelist
-  const snap = await get(ref(db, "allowedEmails"));
-  if (!snap.exists()) return false;
-  const data = snap.val();
-  if (Array.isArray(data)) {
-    return data.includes(email);
-  }
-  // Object format: { 0: "email@...", 1: "email@..." }
-  return Object.values(data).includes(email);
+  return { allowed: false };
 }
 
 export function useAuth(): AuthState {
@@ -48,7 +61,7 @@ export function useAuth(): AuthState {
       if (firebaseUser) {
         // Verify email is whitelisted
         try {
-          const allowed = await isEmailAllowed(firebaseUser.email ?? "");
+          const { allowed } = await checkAndWhitelistEmail(firebaseUser.email ?? "");
           if (!allowed) {
             await firebaseSignOut(auth);
             setUser(null);
