@@ -30,6 +30,16 @@ interface SlotsMap {
   [key: string]: Slot;
 }
 
+interface LogEntry {
+  user: string;
+  startedAt: number;
+  endedAt: number;
+  durationSeconds: number;
+}
+
+interface LogMap {
+  [key: string]: LogEntry;
+}
 
 function getToday(): string {
   return new Date().toISOString().split("T")[0];
@@ -168,9 +178,11 @@ function UserSelectScreen({ onSelect }: { onSelect: (name: string) => void }) {
 function StatusBanner({
   status,
   currentUser,
+  onAutoRelease,
 }: {
   status: ShowerStatus | null;
   currentUser: string;
+  onAutoRelease: (startedAt: number) => void;
 }) {
   const [elapsed, setElapsed] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -200,6 +212,7 @@ function StatusBanner({
   // Auto-release
   useEffect(() => {
     if (isMe && elapsed >= AUTO_RELEASE_SECONDS) {
+      if (status?.startedAt) onAutoRelease(status.startedAt);
       set(ref(db, "status"), { currentUser: null, startedAt: null });
     }
   }, [isMe, elapsed]);
@@ -249,10 +262,12 @@ function ShowerButton({
   status,
   currentUser,
   slots,
+  onEnd,
 }: {
   status: ShowerStatus | null;
   currentUser: string;
   slots: SlotsMap | null;
+  onEnd: (startedAt: number) => void;
 }) {
   const isOccupied = status?.currentUser != null;
   const isMe = status?.currentUser === currentUser;
@@ -262,6 +277,7 @@ function ShowerButton({
     if (!canAct) return;
 
     if (isMe) {
+      if (status?.startedAt) onEnd(status.startedAt);
       set(ref(db, "status"), { currentUser: null, startedAt: null });
       return;
     }
@@ -312,7 +328,105 @@ function ShowerButton({
   );
 }
 
+// ============================================================
+// SHOWER LOG (last 24 hours)
+// ============================================================
+const LOG_COLORS = ["bg-sky", "bg-yolk", "bg-mint", "bg-bubblegum", "bg-coral"];
 
+function userColor(name: string): string {
+  const idx = USERS.indexOf(name);
+  return LOG_COLORS[idx >= 0 ? idx % LOG_COLORS.length : 0];
+}
+
+function formatLogTime(ts: number): string {
+  const d = new Date(ts);
+  return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
+function formatDuration(seconds: number): string {
+  const min = Math.floor(seconds / 60);
+  const sec = seconds % 60;
+  if (min === 0) return `${sec}s`;
+  return sec > 0 ? `${min}m ${sec}s` : `${min}m`;
+}
+
+function timeAgo(ts: number): string {
+  const diff = Math.floor((Date.now() - ts) / 1000);
+  if (diff < 60) return "just now";
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  return `${Math.floor(diff / 3600)}h ago`;
+}
+
+function ShowerLog({ log }: { log: LogMap | null }) {
+  const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+
+  const entries = log
+    ? Object.entries(log)
+        .filter(([, e]) => e.endedAt > cutoff)
+        .sort(([, a], [, b]) => b.endedAt - a.endedAt)
+    : [];
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="font-display text-xl uppercase">Shower Log</h2>
+        <div className="brutal-card-sm bg-white px-3 py-1 rounded-lg">
+          <span className="font-mono text-sm font-bold">
+            last 24h
+          </span>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <AnimatePresence mode="popLayout">
+          {entries.length === 0 ? (
+            <motion.div
+              key="empty-log"
+              className="brutal-card-sm bg-white rounded-xl p-6 text-center"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+            >
+              <p className="font-mono text-sm text-gray-500 uppercase tracking-wider">
+                No showers logged yet
+              </p>
+              <p className="text-3xl mt-2">🧼</p>
+            </motion.div>
+          ) : (
+            entries.map(([id, entry], i) => (
+              <motion.div
+                key={id}
+                className={`brutal-card-sm bg-white rounded-xl p-4 flex items-center gap-3`}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20, scale: 0.9 }}
+                transition={{ delay: i * 0.03 }}
+                layout
+              >
+                <div
+                  className={`${userColor(entry.user)} w-10 h-10 rounded-lg brutal-card-sm flex items-center justify-center font-display text-sm shrink-0`}
+                >
+                  {entry.user.charAt(0)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="font-display text-sm block">
+                    {entry.user}
+                  </span>
+                  <span className="font-mono text-xs text-gray-500">
+                    {formatLogTime(entry.startedAt)} &mdash; {formatDuration(entry.durationSeconds)}
+                  </span>
+                </div>
+                <div className="font-mono text-xs text-gray-400 shrink-0">
+                  {timeAgo(entry.endedAt)}
+                </div>
+              </motion.div>
+            ))
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+}
 
 // ============================================================
 // TIME SLOTS
@@ -764,15 +878,40 @@ function LoginScreen({
 // ============================================================
 // MAIN PAGE
 // ============================================================
+async function sendNotification(title: string, body: string) {
+  if (typeof window === "undefined") return;
+  if (!("Notification" in window)) return;
+  if (Notification.permission !== "granted") return;
+
+  // Use service worker notification if available (works when tab is backgrounded)
+  if ("serviceWorker" in navigator) {
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      reg.active?.postMessage({ type: "SHOW_NOTIFICATION", title, body });
+      return;
+    } catch {
+      // Fall through to basic notification
+    }
+  }
+
+  try {
+    new Notification(title, { body, icon: "/icon" });
+  } catch {
+    // Safari/iOS may not support Notification constructor
+  }
+}
+
 export default function Home() {
   const { user: authUser, loading: authLoading, error: authError, signIn, signOut } = useAuth();
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [status, setStatus] = useState<ShowerStatus | null>(null);
   const [slots, setSlots] = useState<SlotsMap | null>(null);
+  const [log, setLog] = useState<LogMap | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const prevStatusRef = useRef<ShowerStatus | null | undefined>(undefined);
 
-  // Load user from localStorage + register SW
+  // Load user from localStorage + register SW + request notification permission
   useEffect(() => {
     const savedUser = getPersistedUser();
     if (savedUser) {
@@ -780,13 +919,55 @@ export default function Home() {
     }
     setLoaded(true);
 
-    // Register service worker (for PWA installability)
+    // Register service worker
     if (typeof window !== "undefined" && "serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js").catch(() => {
         // Ignore SW registration failures.
       });
     }
+
+    if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
+      try {
+        void Notification.requestPermission();
+      } catch {
+        // Ignore permission request failures.
+      }
+    }
   }, []);
+
+  // Send notifications on status changes
+  useEffect(() => {
+    // Skip the very first load (prevStatusRef is undefined)
+    if (prevStatusRef.current === undefined) {
+      prevStatusRef.current = status;
+      return;
+    }
+
+    const prev = prevStatusRef.current;
+    prevStatusRef.current = status;
+
+    if (!currentUser) return;
+
+    // Someone started showering
+    if (status?.currentUser && !prev?.currentUser) {
+      if (status.currentUser !== currentUser) {
+        sendNotification(
+          "Shower Occupied 🚿",
+          `${status.currentUser} just started showering`
+        );
+      }
+    }
+
+    // Someone finished showering
+    if (!status?.currentUser && prev?.currentUser) {
+      if (prev.currentUser !== currentUser) {
+        sendNotification(
+          "Shower Free ✅",
+          `${prev.currentUser} is done — shower is free!`
+        );
+      }
+    }
+  }, [status, currentUser]);
 
   // Firebase listeners
   useEffect(() => {
@@ -807,7 +988,14 @@ export default function Home() {
       // Ignore listener errors (e.g. Safari private mode).
     });
 
-    // Cleanup old log entries
+    const logRef = ref(db, "log");
+    const unsubLog = onValue(logRef, (snap) => {
+      setLog(snap.val());
+    }, () => {
+      // Ignore listener errors (e.g. Safari private mode).
+    });
+
+    // Clear all existing log entries
     remove(ref(db, "log")).catch(() => {
       // Ignore cleanup failures.
     });
@@ -832,7 +1020,20 @@ export default function Home() {
     return () => {
       unsubStatus();
       unsubSlots();
+      unsubLog();
     };
+  }, [currentUser]);
+
+  const logShower = useCallback((startedAt: number) => {
+    const now = Date.now();
+    const durationSeconds = Math.floor((now - startedAt) / 1000);
+    if (durationSeconds < 1 || !currentUser) return;
+    push(ref(db, "log"), {
+      user: currentUser,
+      startedAt,
+      endedAt: now,
+      durationSeconds,
+    });
   }, [currentUser]);
 
   const handleSelectUser = useCallback((name: string) => {
@@ -845,6 +1046,7 @@ export default function Home() {
     setCurrentUser(null);
     setStatus(null);
     setSlots(null);
+    setLog(null);
   }, []);
 
   if (!loaded || authLoading) return null;
@@ -910,7 +1112,7 @@ export default function Home() {
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.3 }}
             >
-              <StatusBanner status={status} currentUser={currentUser} />
+              <StatusBanner status={status} currentUser={currentUser} onAutoRelease={logShower} />
             </motion.div>
 
             {/* Shower button */}
@@ -923,7 +1125,17 @@ export default function Home() {
                 status={status}
                 currentUser={currentUser}
                 slots={slots}
+                onEnd={logShower}
               />
+            </motion.div>
+
+            {/* Shower Log */}
+            <motion.div
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.45 }}
+            >
+              <ShowerLog log={log} />
             </motion.div>
 
             {/* Divider */}
