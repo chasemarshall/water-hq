@@ -482,31 +482,31 @@ function ClaimModal({
             </h3>
 
             <div className="flex flex-col gap-5">
-              {/* Date picker */}
-              <div>
-                <label className="font-mono text-sm font-bold uppercase tracking-wider block mb-2">
-                  Date
-                </label>
-                <input
-                  type="date"
-                  value={date}
-                  min={getToday()}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="brutal-input w-full rounded-xl"
-                />
-              </div>
-
-              {/* Start time */}
-              <div>
-                <label className="font-mono text-sm font-bold uppercase tracking-wider block mb-2">
-                  Start Time
-                </label>
-                <input
-                  type="time"
-                  value={time}
-                  onChange={(e) => setTime(e.target.value)}
-                  className="brutal-input w-full rounded-xl"
-                />
+              {/* Date + Time side by side */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-mono text-sm font-bold uppercase tracking-wider block mb-2">
+                    Date
+                  </label>
+                  <input
+                    type="date"
+                    value={date}
+                    min={getToday()}
+                    onChange={(e) => setDate(e.target.value)}
+                    className="brutal-input w-full rounded-xl text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="font-mono text-sm font-bold uppercase tracking-wider block mb-2">
+                    Time
+                  </label>
+                  <input
+                    type="time"
+                    value={time}
+                    onChange={(e) => setTime(e.target.value)}
+                    className="brutal-input w-full rounded-xl text-sm"
+                  />
+                </div>
               </div>
 
               {/* Duration */}
@@ -532,19 +532,12 @@ function ClaimModal({
               {/* Recurring toggle */}
               <div>
                 <button
-                  className={`brutal-btn w-full py-4 rounded-xl font-mono font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-3 ${
+                  className={`brutal-btn w-full py-4 rounded-xl font-mono font-bold text-sm uppercase tracking-wider text-center ${
                     recurring ? "bg-lime" : "bg-white"
                   }`}
                   onClick={() => setRecurring(!recurring)}
                 >
-                  <span
-                    className={`inline-flex items-center justify-center w-6 h-6 border-3 border-ink rounded-md text-xs ${
-                      recurring ? "bg-ink text-white" : "bg-white"
-                    }`}
-                  >
-                    {recurring ? "✓" : ""}
-                  </span>
-                  Repeat Daily
+                  {recurring ? "Repeating Daily ✓" : "Repeat Daily?"}
                 </button>
               </div>
             </div>
