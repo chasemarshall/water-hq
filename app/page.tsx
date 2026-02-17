@@ -748,9 +748,7 @@ function LoginScreen({
         body: JSON.stringify({ token }),
       });
       const data = await res.json();
-      if (data.success) {
-        setVerified(true);
-      }
+      setVerified(data.success === true);
     } catch {
       // Allow through if verification endpoint fails
       setVerified(true);
@@ -798,18 +796,22 @@ function LoginScreen({
 
       {!verified ? (
         <motion.div
+          className="brutal-card bg-white rounded-2xl p-6 flex flex-col items-center gap-4"
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.45 }}
+          transition={{ delay: 0.45, type: "spring", stiffness: 200 }}
         >
+          <p className="font-mono text-xs font-bold uppercase tracking-widest">
+            Verify to continue
+          </p>
           <Turnstile
             sitekey="0x4AAAAAACe1VnSdqdE0AClL"
             onVerify={handleTurnstileSuccess}
             theme="light"
           />
           {verifying && (
-            <p className="font-mono text-sm text-center mt-2 uppercase tracking-wider">
-              Verifying...
+            <p className="font-mono text-sm uppercase tracking-wider animate-pulse">
+              Checking...
             </p>
           )}
         </motion.div>
