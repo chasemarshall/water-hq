@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { db } from "@/lib/firebase";
 import { ref, onValue, set, push, remove, query, orderByChild, endAt, get } from "firebase/database";
 
-const USERS = ["Chase", "Mom", "Dad", "Sibling"];
+const USERS = ["Chase", "Livia", "A.J.", "Dad"];
 const SLOT_COLORS = ["slot-yolk", "slot-mint", "slot-sky", "slot-bubblegum"];
 const DURATIONS = [5, 10, 15, 20, 30];
 const AUTO_RELEASE_SECONDS = 1800;
