@@ -9,6 +9,7 @@ const USERS = ["Chase", "Livia", "A.J.", "Dad", "Mom"];
 const SLOT_COLORS = ["slot-yolk", "slot-mint", "slot-sky", "slot-bubblegum"];
 const DURATIONS = [15, 20, 30, 45, 60];
 const AUTO_RELEASE_SECONDS = 2700;
+const USER_STORAGE_KEY = "showerTimerUser";
 
 interface ShowerStatus {
   currentUser: string | null;
@@ -47,6 +48,34 @@ function formatElapsed(seconds: number): string {
   const min = Math.floor(seconds / 60);
   const sec = seconds % 60;
   return `${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+}
+
+function getPersistedUser(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const saved = window.localStorage.getItem(USER_STORAGE_KEY);
+    return saved && USERS.includes(saved) ? saved : null;
+  } catch {
+    return null;
+  }
+}
+
+function persistUser(name: string) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(USER_STORAGE_KEY, name);
+  } catch {
+    // Ignore storage failures (e.g. Safari private mode).
+  }
+}
+
+function clearPersistedUser() {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(USER_STORAGE_KEY);
+  } catch {
+    // Ignore storage failures (e.g. Safari private mode).
+  }
 }
 
 // ============================================================
@@ -601,14 +630,18 @@ export default function Home() {
 
   // Load user from localStorage + request notification permission
   useEffect(() => {
-    const saved = localStorage.getItem("showerTimerUser");
-    if (saved && USERS.includes(saved)) {
-      setCurrentUser(saved);
+    const savedUser = getPersistedUser();
+    if (savedUser) {
+      setCurrentUser(savedUser);
     }
     setLoaded(true);
 
     if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
-      Notification.requestPermission();
+      try {
+        void Notification.requestPermission();
+      } catch {
+        // Ignore permission request failures.
+      }
     }
   }, []);
 
@@ -683,12 +716,12 @@ export default function Home() {
   }, [currentUser]);
 
   const handleSelectUser = useCallback((name: string) => {
-    localStorage.setItem("showerTimerUser", name);
+    persistUser(name);
     setCurrentUser(name);
   }, []);
 
   const handleSwitchUser = useCallback(() => {
-    localStorage.removeItem("showerTimerUser");
+    clearPersistedUser();
     setCurrentUser(null);
     setStatus(null);
     setSlots(null);
