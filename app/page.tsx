@@ -1091,25 +1091,20 @@ export default function Home() {
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.1 }}
             >
-              <div className="brutal-card-sm bg-white px-4 py-2 rounded-xl">
+              <button
+                className="brutal-btn bg-white px-4 py-2 rounded-xl"
+                onClick={handleSwitchUser}
+              >
                 <span className="font-display text-sm">
                   {currentUser}
                 </span>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  className="brutal-btn bg-white px-4 py-2 rounded-xl font-mono text-sm font-bold uppercase"
-                  onClick={handleSwitchUser}
-                >
-                  Switch
-                </button>
-                <button
-                  className="brutal-btn bg-coral text-white px-4 py-2 rounded-xl font-mono text-sm font-bold uppercase"
-                  onClick={signOut}
-                >
-                  Sign Out
-                </button>
-              </div>
+              </button>
+              <button
+                className="brutal-btn bg-coral text-white px-4 py-2 rounded-xl font-mono text-sm font-bold uppercase"
+                onClick={signOut}
+              >
+                Sign Out
+              </button>
             </motion.header>
 
             {/* Decorative ticker */}
