@@ -3,14 +3,8 @@ import webpush from "web-push";
 
 const FIREBASE_DB_URL = "https://shower-tracker-276d6-default-rtdb.firebaseio.com";
 
-const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!;
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY!;
-
-webpush.setVapidDetails(
-  "mailto:shower-tracker@example.com",
-  VAPID_PUBLIC_KEY,
-  VAPID_PRIVATE_KEY,
-);
+// Force this route to be dynamic (never pre-rendered at build time)
+export const dynamic = "force-dynamic";
 
 interface PushRecord {
   subscription: webpush.PushSubscription;
@@ -20,6 +14,15 @@ interface PushRecord {
 
 export async function POST(req: NextRequest) {
   try {
+    const vapidPublic = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+    const vapidPrivate = process.env.VAPID_PRIVATE_KEY;
+
+    if (!vapidPublic || !vapidPrivate) {
+      return NextResponse.json({ error: "VAPID keys not configured" }, { status: 500 });
+    }
+
+    webpush.setVapidDetails("mailto:shower-tracker@example.com", vapidPublic, vapidPrivate);
+
     const { title, body, excludeUser } = await req.json();
 
     if (!title || !body) {
