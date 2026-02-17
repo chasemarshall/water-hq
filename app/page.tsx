@@ -1,0 +1,715 @@
+"use client";
+
+import { useState, useEffect, useCallback, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { db } from "@/lib/firebase";
+import { ref, onValue, set, push, remove, query, orderByChild, endAt, get } from "firebase/database";
+
+const USERS = ["Chase", "Mom", "Dad", "Sibling"];
+const SLOT_COLORS = ["slot-yolk", "slot-mint", "slot-sky", "slot-bubblegum"];
+const DURATIONS = [5, 10, 15, 20, 30];
+const AUTO_RELEASE_SECONDS = 1800;
+
+interface ShowerStatus {
+  currentUser: string | null;
+  startedAt: number | null;
+}
+
+interface Slot {
+  user: string;
+  date: string;
+  startTime: string;
+  durationMinutes: number;
+}
+
+interface SlotsMap {
+  [key: string]: Slot;
+}
+
+function getToday(): string {
+  return new Date().toISOString().split("T")[0];
+}
+
+function formatTime(date: Date): string {
+  return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
+function formatTimeRange(startTime: string, durationMinutes: number): string {
+  const [h, m] = startTime.split(":").map(Number);
+  const start = new Date();
+  start.setHours(h, m, 0, 0);
+  const end = new Date(start.getTime() + durationMinutes * 60000);
+  return `${formatTime(start)} \u2013 ${formatTime(end)}`;
+}
+
+function formatElapsed(seconds: number): string {
+  const min = Math.floor(seconds / 60);
+  const sec = seconds % 60;
+  return `${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+}
+
+// ============================================================
+// USER SELECT SCREEN
+// ============================================================
+function UserSelectScreen({ onSelect }: { onSelect: (name: string) => void }) {
+  const colors = ["bg-lime", "bg-sky", "bg-yolk", "bg-bubblegum"];
+
+  return (
+    <motion.div
+      className="min-h-dvh flex flex-col items-center justify-center p-6 gap-8"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+    >
+      {/* Decorative top sticker */}
+      <motion.div
+        className="brutal-card bg-white px-6 py-3 -rotate-2"
+        initial={{ y: -40, opacity: 0, rotate: -8 }}
+        animate={{ y: 0, opacity: 1, rotate: -2 }}
+        transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
+      >
+        <span className="font-display text-sm tracking-widest uppercase">
+          Hot Water HQ
+        </span>
+      </motion.div>
+
+      <motion.h1
+        className="font-display text-5xl sm:text-6xl text-center leading-none"
+        initial={{ y: 30, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.2, type: "spring", stiffness: 150 }}
+      >
+        SHOWER
+        <br />
+        TRACKER
+      </motion.h1>
+
+      <motion.p
+        className="text-lg font-bold uppercase tracking-wider"
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.35 }}
+      >
+        Who are you?
+      </motion.p>
+
+      <div className="flex flex-col gap-4 w-full max-w-xs">
+        {USERS.map((name, i) => (
+          <motion.button
+            key={name}
+            className={`brutal-btn ${colors[i % colors.length]} px-8 py-5 font-display text-xl ${i === 3 ? "text-white" : "text-ink"} rounded-xl`}
+            initial={{ x: i % 2 === 0 ? -60 : 60, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ delay: 0.4 + i * 0.1, type: "spring", stiffness: 200 }}
+            onClick={() => onSelect(name)}
+          >
+            {name}
+          </motion.button>
+        ))}
+      </div>
+
+      {/* Fun bottom decoration */}
+      <motion.div
+        className="mt-4 flex gap-2"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.9 }}
+      >
+        {["🚿", "🔥", "💧", "🧼"].map((emoji, i) => (
+          <span
+            key={i}
+            className="brutal-card-sm bg-white w-10 h-10 flex items-center justify-center text-lg rounded-lg"
+            style={{ transform: `rotate(${(i - 1.5) * 5}deg)` }}
+          >
+            {emoji}
+          </span>
+        ))}
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ============================================================
+// STATUS BANNER
+// ============================================================
+function StatusBanner({
+  status,
+  currentUser,
+}: {
+  status: ShowerStatus | null;
+  currentUser: string;
+}) {
+  const [elapsed, setElapsed] = useState(0);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  const isOccupied = status?.currentUser != null;
+  const isMe = status?.currentUser === currentUser;
+
+  useEffect(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+
+    if (isOccupied && status?.startedAt) {
+      const update = () => {
+        const secs = Math.floor((Date.now() - status.startedAt!) / 1000);
+        setElapsed(secs);
+      };
+      update();
+      intervalRef.current = setInterval(update, 1000);
+    } else {
+      setElapsed(0);
+    }
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [isOccupied, status?.startedAt]);
+
+  // Auto-release
+  useEffect(() => {
+    if (isMe && elapsed >= AUTO_RELEASE_SECONDS) {
+      set(ref(db, "status"), { currentUser: null, startedAt: null });
+    }
+  }, [isMe, elapsed]);
+
+  return (
+    <motion.div
+      className={`brutal-card rounded-2xl p-6 sm:p-8 text-center ${
+        isOccupied ? "bg-coral pulse-occupied" : "bg-lime"
+      }`}
+      layout
+      animate={{ scale: isOccupied ? [1, 1.01, 1] : 1 }}
+      transition={{ duration: 0.3 }}
+    >
+      <div className="font-display text-2xl sm:text-3xl uppercase leading-tight">
+        {isOccupied ? (
+          <>
+            <span className="block text-base font-mono font-bold mb-1 uppercase tracking-widest">
+              Occupied
+            </span>
+            {status!.currentUser} is showering
+          </>
+        ) : (
+          <>
+            <span className="block text-6xl sm:text-7xl mb-2">🚿</span>
+            Shower Free
+          </>
+        )}
+      </div>
+
+      {isOccupied && (
+        <motion.div
+          className="font-mono text-5xl sm:text-6xl font-bold mt-4 timer-tick"
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+        >
+          {formatElapsed(elapsed)}
+        </motion.div>
+      )}
+    </motion.div>
+  );
+}
+
+// ============================================================
+// SHOWER BUTTON
+// ============================================================
+function ShowerButton({
+  status,
+  currentUser,
+  slots,
+}: {
+  status: ShowerStatus | null;
+  currentUser: string;
+  slots: SlotsMap | null;
+}) {
+  const isOccupied = status?.currentUser != null;
+  const isMe = status?.currentUser === currentUser;
+  const canAct = !isOccupied || isMe;
+
+  const handleClick = () => {
+    if (!canAct) return;
+
+    if (isMe) {
+      set(ref(db, "status"), { currentUser: null, startedAt: null });
+      return;
+    }
+
+    // Check for upcoming slots
+    if (slots) {
+      const now = new Date();
+      const today = getToday();
+      for (const slot of Object.values(slots)) {
+        if (slot.date !== today) continue;
+        const [h, m] = slot.startTime.split(":").map(Number);
+        const slotStart = new Date();
+        slotStart.setHours(h, m, 0, 0);
+        const diffMin = (slotStart.getTime() - now.getTime()) / 60000;
+        if (diffMin > 0 && diffMin <= 5) {
+          alert(
+            `Heads up: ${slot.user} has a slot at ${slot.startTime}. Starting anyway.`
+          );
+          break;
+        }
+      }
+    }
+
+    set(ref(db, "status"), { currentUser, startedAt: Date.now() });
+  };
+
+  const label = isMe
+    ? "I'M DONE"
+    : isOccupied
+      ? `${status!.currentUser} is in there...`
+      : "START SHOWER";
+
+  return (
+    <motion.button
+      className={`brutal-btn w-full py-6 rounded-2xl font-display text-2xl sm:text-3xl tracking-wide ${
+        isMe
+          ? "bg-coral text-white"
+          : isOccupied
+            ? "bg-gray-200 text-ink"
+            : "bg-lime text-ink"
+      }`}
+      disabled={!canAct}
+      onClick={handleClick}
+      whileTap={canAct ? { scale: 0.97 } : undefined}
+    >
+      {label}
+    </motion.button>
+  );
+}
+
+// ============================================================
+// TIME SLOTS
+// ============================================================
+function TimeSlots({
+  slots,
+  currentUser,
+  onClaimClick,
+}: {
+  slots: SlotsMap | null;
+  currentUser: string;
+  onClaimClick: () => void;
+}) {
+  const today = getToday();
+  const now = new Date();
+
+  const todaySlots = slots
+    ? Object.entries(slots)
+        .filter(([, s]) => s.date === today)
+        .filter(([, s]) => {
+          const [h, m] = s.startTime.split(":").map(Number);
+          const end = new Date();
+          end.setHours(h, m + s.durationMinutes, 0, 0);
+          return end > now;
+        })
+        .sort(([, a], [, b]) => a.startTime.localeCompare(b.startTime))
+    : [];
+
+  const handleDelete = (id: string) => {
+    remove(ref(db, `slots/${id}`));
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="font-display text-xl uppercase">Today&apos;s Slots</h2>
+        <div className="brutal-card-sm bg-white px-3 py-1 rounded-lg">
+          <span className="font-mono text-sm font-bold">
+            {todaySlots.length} booked
+          </span>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-3 mb-4">
+        <AnimatePresence mode="popLayout">
+          {todaySlots.length === 0 ? (
+            <motion.div
+              key="empty"
+              className="brutal-card-sm bg-white rounded-xl p-6 text-center"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+            >
+              <p className="font-mono text-sm text-gray-500 uppercase tracking-wider">
+                No slots claimed yet
+              </p>
+              <p className="text-3xl mt-2">🫧</p>
+            </motion.div>
+          ) : (
+            todaySlots.map(([id, slot], i) => (
+              <motion.div
+                key={id}
+                className={`brutal-card-sm ${SLOT_COLORS[i % SLOT_COLORS.length]} rounded-xl p-4 flex items-center justify-between`}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20, scale: 0.9 }}
+                transition={{ delay: i * 0.05 }}
+                layout
+              >
+                <div>
+                  <span className="font-display text-base block">
+                    {slot.user}
+                  </span>
+                  <span className="font-mono text-sm font-bold">
+                    {formatTimeRange(slot.startTime, slot.durationMinutes)}
+                  </span>
+                </div>
+                {slot.user === currentUser && (
+                  <motion.button
+                    className="brutal-btn bg-white w-9 h-9 flex items-center justify-center rounded-lg font-bold text-lg"
+                    onClick={() => handleDelete(id)}
+                    whileTap={{ scale: 0.9 }}
+                  >
+                    ✕
+                  </motion.button>
+                )}
+              </motion.div>
+            ))
+          )}
+        </AnimatePresence>
+      </div>
+
+      <motion.button
+        className="brutal-btn bg-white w-full py-4 rounded-xl font-display text-lg uppercase tracking-wide"
+        onClick={onClaimClick}
+        whileTap={{ scale: 0.97 }}
+      >
+        + Claim a Slot
+      </motion.button>
+    </div>
+  );
+}
+
+// ============================================================
+// CLAIM MODAL
+// ============================================================
+function ClaimModal({
+  isOpen,
+  onClose,
+  currentUser,
+  slots,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  currentUser: string;
+  slots: SlotsMap | null;
+}) {
+  const [time, setTime] = useState("");
+  const [duration, setDuration] = useState(15);
+
+  useEffect(() => {
+    if (isOpen) {
+      const now = new Date();
+      const min = Math.ceil(now.getMinutes() / 15) * 15;
+      now.setMinutes(min, 0, 0);
+      if (min >= 60) now.setHours(now.getHours() + 1, 0, 0, 0);
+      setTime(
+        `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`
+      );
+      setDuration(15);
+    }
+  }, [isOpen]);
+
+  const handleClaim = () => {
+    if (!time) return;
+
+    const today = getToday();
+    const [newH, newM] = time.split(":").map(Number);
+    const newStart = newH * 60 + newM;
+    const newEnd = newStart + duration;
+
+    if (slots) {
+      const overlap = Object.values(slots).some((slot) => {
+        if (slot.date !== today) return false;
+        const [sh, sm] = slot.startTime.split(":").map(Number);
+        const sStart = sh * 60 + sm;
+        const sEnd = sStart + slot.durationMinutes;
+        return newStart < sEnd && newEnd > sStart;
+      });
+
+      if (overlap) {
+        alert("This time overlaps with an existing slot. Pick a different time.");
+        return;
+      }
+    }
+
+    push(ref(db, "slots"), {
+      user: currentUser,
+      date: today,
+      startTime: time,
+      durationMinutes: duration,
+    });
+
+    onClose();
+  };
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          className="fixed inset-0 z-40 modal-backdrop flex items-end sm:items-center justify-center p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) onClose();
+          }}
+        >
+          <motion.div
+            className="brutal-card bg-paper rounded-2xl sm:rounded-2xl w-full max-w-md p-6 sm:p-8"
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+          >
+            <h3 className="font-display text-2xl uppercase mb-6">
+              Claim a Slot
+            </h3>
+
+            <div className="flex flex-col gap-4">
+              <div>
+                <label className="font-mono text-sm font-bold uppercase tracking-wider block mb-2">
+                  Start Time
+                </label>
+                <input
+                  type="time"
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                  className="brutal-input w-full rounded-xl"
+                />
+              </div>
+
+              <div>
+                <label className="font-mono text-sm font-bold uppercase tracking-wider block mb-2">
+                  Duration
+                </label>
+                <div className="flex gap-2 flex-wrap">
+                  {DURATIONS.map((d) => (
+                    <button
+                      key={d}
+                      className={`brutal-btn px-4 py-3 rounded-xl font-mono font-bold text-sm ${
+                        duration === d ? "bg-lime" : "bg-white"
+                      }`}
+                      onClick={() => setDuration(d)}
+                    >
+                      {d}m
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-8">
+              <button
+                className="brutal-btn bg-white flex-1 py-4 rounded-xl font-display text-base uppercase"
+                onClick={onClose}
+              >
+                Cancel
+              </button>
+              <button
+                className="brutal-btn bg-lime flex-1 py-4 rounded-xl font-display text-base uppercase"
+                onClick={handleClaim}
+              >
+                Claim It
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+// ============================================================
+// TICKER BAR (decorative marquee)
+// ============================================================
+function TickerBar() {
+  const text =
+    "ONE SHOWER AT A TIME \u2022 HOT WATER IS PRECIOUS \u2022 RESPECT THE QUEUE \u2022 NO COLD SHOWERS \u2022 ";
+  return (
+    <div className="brutal-card-sm bg-ink text-paper overflow-hidden rounded-xl py-2 mb-6">
+      <div className="marquee whitespace-nowrap font-mono text-xs font-bold uppercase tracking-widest">
+        <span>{text.repeat(4)}</span>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// MAIN PAGE
+// ============================================================
+export default function Home() {
+  const [currentUser, setCurrentUser] = useState<string | null>(null);
+  const [status, setStatus] = useState<ShowerStatus | null>(null);
+  const [slots, setSlots] = useState<SlotsMap | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  // Load user from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem("showerTimerUser");
+    if (saved && USERS.includes(saved)) {
+      setCurrentUser(saved);
+    }
+    setLoaded(true);
+  }, []);
+
+  // Firebase listeners
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const statusRef = ref(db, "status");
+    const slotsRef = ref(db, "slots");
+
+    const unsubStatus = onValue(statusRef, (snap) => {
+      setStatus(snap.val());
+    });
+
+    const unsubSlots = onValue(slotsRef, (snap) => {
+      setSlots(snap.val());
+    });
+
+    // Cleanup old slots
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split("T")[0];
+    const oldSlotsQuery = query(
+      ref(db, "slots"),
+      orderByChild("date"),
+      endAt(yesterdayStr)
+    );
+    get(oldSlotsQuery).then((snap) => {
+      snap.forEach((child) => {
+        remove(child.ref);
+      });
+    });
+
+    return () => {
+      unsubStatus();
+      unsubSlots();
+    };
+  }, [currentUser]);
+
+  const handleSelectUser = useCallback((name: string) => {
+    localStorage.setItem("showerTimerUser", name);
+    setCurrentUser(name);
+  }, []);
+
+  const handleSwitchUser = useCallback(() => {
+    localStorage.removeItem("showerTimerUser");
+    setCurrentUser(null);
+    setStatus(null);
+    setSlots(null);
+  }, []);
+
+  if (!loaded) return null;
+
+  return (
+    <main className="max-w-lg mx-auto relative">
+      <AnimatePresence mode="wait">
+        {!currentUser ? (
+          <UserSelectScreen key="select" onSelect={handleSelectUser} />
+        ) : (
+          <motion.div
+            key="main"
+            className="min-h-dvh p-5 flex flex-col gap-6"
+            initial={{ opacity: 0, x: 30 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -30 }}
+            transition={{ type: "spring", stiffness: 200, damping: 25 }}
+          >
+            {/* Header */}
+            <motion.header
+              className="flex items-center justify-between pt-2"
+              initial={{ y: -20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.1 }}
+            >
+              <div className="brutal-card-sm bg-white px-4 py-2 rounded-xl">
+                <span className="font-display text-sm">
+                  {currentUser}
+                </span>
+              </div>
+              <button
+                className="brutal-btn bg-white px-4 py-2 rounded-xl font-mono text-sm font-bold uppercase"
+                onClick={handleSwitchUser}
+              >
+                Switch
+              </button>
+            </motion.header>
+
+            {/* Decorative ticker */}
+            <motion.div
+              initial={{ opacity: 0, scaleX: 0.8 }}
+              animate={{ opacity: 1, scaleX: 1 }}
+              transition={{ delay: 0.2 }}
+            >
+              <TickerBar />
+            </motion.div>
+
+            {/* Status */}
+            <motion.div
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.3 }}
+            >
+              <StatusBanner status={status} currentUser={currentUser} />
+            </motion.div>
+
+            {/* Shower button */}
+            <motion.div
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.4 }}
+            >
+              <ShowerButton
+                status={status}
+                currentUser={currentUser}
+                slots={slots}
+              />
+            </motion.div>
+
+            {/* Divider */}
+            <div className="border-t-3 border-ink border-dashed" />
+
+            {/* Time slots */}
+            <motion.div
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.5 }}
+            >
+              <TimeSlots
+                slots={slots}
+                currentUser={currentUser}
+                onClaimClick={() => setShowModal(true)}
+              />
+            </motion.div>
+
+            {/* Footer */}
+            <motion.footer
+              className="text-center pb-6 mt-auto"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.7 }}
+            >
+              <p className="font-mono text-xs text-gray-400 uppercase tracking-widest">
+                One shower at a time
+              </p>
+            </motion.footer>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Claim Modal */}
+      {currentUser && (
+        <ClaimModal
+          isOpen={showModal}
+          onClose={() => setShowModal(false)}
+          currentUser={currentUser}
+          slots={slots}
+        />
+      )}
+    </main>
+  );
+}
