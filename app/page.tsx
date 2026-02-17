@@ -990,7 +990,22 @@ export default function Home() {
   const [log, setLog] = useState<LogMap | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission | "unsupported">("unsupported");
   const prevStatusRef = useRef<ShowerStatus | null | undefined>(undefined);
+
+  // Request notification permission (called from button tap on iOS, or auto on other browsers)
+  const requestNotifPermission = useCallback(async () => {
+    if (typeof window === "undefined" || !("Notification" in window)) return;
+    try {
+      const result = await Notification.requestPermission();
+      setNotifPermission(result);
+      if (result === "granted" && currentUser) {
+        await subscribeToPush(currentUser);
+      }
+    } catch {
+      // Ignore permission failures.
+    }
+  }, [currentUser]);
 
   // Load user from localStorage + register SW + request notification permission
   useEffect(() => {
@@ -1007,20 +1022,27 @@ export default function Home() {
       });
     }
 
-    // Request notification permission and subscribe to push
+    // Check notification permission state
     if (typeof window !== "undefined" && "Notification" in window) {
-      (async () => {
-        try {
-          if (Notification.permission === "default") {
-            await Notification.requestPermission();
+      setNotifPermission(Notification.permission);
+
+      // Auto-request on non-iOS browsers (iOS requires user gesture)
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      if (!isIOS && Notification.permission === "default") {
+        (async () => {
+          try {
+            const result = await Notification.requestPermission();
+            setNotifPermission(result);
+            if (result === "granted" && savedUser) {
+              await subscribeToPush(savedUser);
+            }
+          } catch {
+            // Ignore permission/subscription failures.
           }
-          if (Notification.permission === "granted" && savedUser) {
-            await subscribeToPush(savedUser);
-          }
-        } catch {
-          // Ignore permission/subscription failures.
-        }
-      })();
+        })();
+      } else if (Notification.permission === "granted" && savedUser) {
+        subscribeToPush(savedUser);
+      }
     }
   }, []);
 
@@ -1202,6 +1224,18 @@ export default function Home() {
                 Sign Out
               </button>
             </motion.header>
+
+            {/* Notification permission banner (iOS needs user gesture) */}
+            {notifPermission === "default" && (
+              <motion.button
+                className="brutal-btn w-full bg-yolk text-ink py-3 rounded-xl font-display text-sm tracking-wide"
+                onClick={requestNotifPermission}
+                initial={{ y: -10, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+              >
+                Tap to enable notifications
+              </motion.button>
+            )}
 
             {/* Decorative ticker */}
             <motion.div
