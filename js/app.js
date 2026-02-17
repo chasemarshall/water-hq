@@ -63,6 +63,14 @@ function initFirebaseListeners() {
   slotsListener = slotsRef.on('value', snapshot => {
     renderSlots(snapshot.val());
   });
+
+  // Clean up yesterday's slots on load
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toISOString().split('T')[0];
+  db.ref('slots').orderByChild('date').endAt(yesterdayStr).once('value', function(snap) {
+    snap.forEach(function(child) { child.ref.remove(); });
+  });
 }
 
 function stopFirebaseListeners() {
