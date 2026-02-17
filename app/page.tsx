@@ -878,12 +878,24 @@ function LoginScreen({
 // ============================================================
 // MAIN PAGE
 // ============================================================
-function sendNotification(title: string, body: string) {
+async function sendNotification(title: string, body: string) {
   if (typeof window === "undefined") return;
   if (!("Notification" in window)) return;
   if (Notification.permission !== "granted") return;
+
+  // Use service worker notification if available (works when tab is backgrounded)
+  if ("serviceWorker" in navigator) {
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      reg.active?.postMessage({ type: "SHOW_NOTIFICATION", title, body });
+      return;
+    } catch {
+      // Fall through to basic notification
+    }
+  }
+
   try {
-    new Notification(title, { body, icon: "🚿" });
+    new Notification(title, { body, icon: "/icon" });
   } catch {
     // Safari/iOS may not support Notification constructor
   }
@@ -899,13 +911,20 @@ export default function Home() {
   const [loaded, setLoaded] = useState(false);
   const prevStatusRef = useRef<ShowerStatus | null | undefined>(undefined);
 
-  // Load user from localStorage + request notification permission
+  // Load user from localStorage + register SW + request notification permission
   useEffect(() => {
     const savedUser = getPersistedUser();
     if (savedUser) {
       setCurrentUser(savedUser);
     }
     setLoaded(true);
+
+    // Register service worker
+    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => {
+        // Ignore SW registration failures.
+      });
+    }
 
     if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
       try {
