@@ -141,12 +141,6 @@ body::before {
   box-shadow: 3px 3px 0px var(--ink);
 }
 
-/* Slot color rotation */
-.slot-yolk { background-color: #FFD166; }
-.slot-mint { background-color: #06D6A0; }
-.slot-sky { background-color: #67E8F9; }
-.slot-bubblegum { background-color: #EF476F; color: white; }
-
 /* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 8px;

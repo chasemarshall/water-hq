@@ -448,7 +448,7 @@ function ShowerLog({ log }: { log: LogMap | null }) {
                 layout
               >
                 <div
-                  className={`${userColor(entry.user)} w-10 h-10 rounded-lg brutal-card-sm flex items-center justify-center font-display text-sm shrink-0`}
+                  className={`${userColor(entry.user)} w-10 h-10 rounded-lg border-2 border-ink flex items-center justify-center font-display text-sm shrink-0`}
                 >
                   {entry.user.charAt(0)}
                 </div>
@@ -747,7 +747,7 @@ function ClaimModal({
                     </p>
                   </div>
                   <motion.button
-                    className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg bg-white/20 font-bold text-sm"
+                    className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg bg-white/20 font-bold text-sm brutal-btn"
                     onClick={() => setOverlapError(false)}
                     whileTap={{ scale: 0.85 }}
                   >
