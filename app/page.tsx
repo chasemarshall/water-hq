@@ -560,7 +560,7 @@ function TimeSlots({
               const dateSlots = slotsByDate.get(dateStr)!;
               return (
                 <div key={dateStr}>
-                  {sortedDates.length > 1 && (
+                  {(
                     <div className="flex items-center gap-3 my-2">
                       <div className="h-px bg-black/15 flex-1" />
                       <span className="font-mono text-xs font-bold uppercase tracking-wider text-gray-500">
