@@ -487,14 +487,15 @@ function TimeSlots({
   const todaySlots = slots
     ? Object.entries(slots)
         .filter(([, s]) => s.date === today || s.recurring)
-        .filter(([, s]) => {
-          const [h, m] = s.startTime.split(":").map(Number);
-          const end = new Date();
-          end.setHours(h, m + s.durationMinutes, 0, 0);
-          return end > now;
-        })
         .sort(([, a], [, b]) => a.startTime.localeCompare(b.startTime))
     : [];
+
+  const isSlotPast = (slot: Slot) => {
+    const [h, m] = slot.startTime.split(":").map(Number);
+    const end = new Date();
+    end.setHours(h, m + slot.durationMinutes, 0, 0);
+    return end <= now;
+  };
 
   const handleDelete = (id: string) => {
     remove(ref(db, `slots/${id}`));
@@ -527,12 +528,14 @@ function TimeSlots({
               <p className="text-3xl mt-2">🫧</p>
             </motion.div>
           ) : (
-            todaySlots.map(([id, slot], i) => (
+            todaySlots.map(([id, slot], i) => {
+              const past = isSlotPast(slot);
+              return (
               <motion.div
                 key={id}
-                className={`brutal-card-sm ${SLOT_COLORS[i % SLOT_COLORS.length]} rounded-xl p-4 flex items-center justify-between`}
+                className={`brutal-card-sm ${SLOT_COLORS[i % SLOT_COLORS.length]} rounded-xl p-4 flex items-center justify-between${past ? " opacity-50" : ""}`}
                 initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
+                animate={{ opacity: past ? 0.5 : 1, x: 0 }}
                 exit={{ opacity: 0, x: 20, scale: 0.9 }}
                 transition={{ delay: i * 0.05 }}
                 layout
@@ -543,6 +546,11 @@ function TimeSlots({
                     {slot.recurring && (
                       <span className="font-mono text-xs ml-2 bg-white/50 px-2 py-0.5 rounded-md">
                         daily
+                      </span>
+                    )}
+                    {past && (
+                      <span className="font-mono text-xs ml-2 bg-black/10 px-2 py-0.5 rounded-md">
+                        done
                       </span>
                     )}
                   </span>
@@ -560,7 +568,8 @@ function TimeSlots({
                   </motion.button>
                 )}
               </motion.div>
-            ))
+              );
+            })
           )}
         </AnimatePresence>
       </div>
