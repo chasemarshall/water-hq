@@ -168,15 +168,29 @@ Firebase is globally mocked in `tests/setup.ts` so tests run without any backend
 
 The user works exclusively through Claude Code and does not write code directly.
 
+### Linear Integration
+
+Issues are tracked in Linear under the **Water HQ** project (team: Chase frazier).
+
+- **Issue IDs** follow the format `CHA-N` (e.g., `CHA-5`)
+- **Reference issues in commits** — include the identifier in the commit message body (e.g., `Fixes CHA-5`). Linear automatically links the commit to the issue.
+- **Issue lifecycle**:
+  1. If no issue exists for the work, create one in Linear before starting
+  2. Set the issue to **In Progress** when work begins
+  3. Mark it **Done** after the changes are pushed to `main`
+- **When the user says "complete the issue"** — commit with the issue reference, push, then mark Done in Linear
+- Firebase project IDs (`shower-tracker-276d6`) are backend infrastructure — do not rename them even when renaming the app
+
 ### Flow
 
-1. **Start**: Create a feature branch off `main` (e.g., `feature/dark-mode`)
-2. **Iterate**: Make changes, commit, and push to the branch. Each push triggers a **Vercel preview deployment**.
+1. **Start**: Create a Linear issue if one doesn't exist, then create a feature branch off `main` (e.g., `feature/dark-mode`)
+2. **Iterate**: Make changes, commit (referencing the Linear issue ID), and push to the branch. Each push triggers a **Vercel preview deployment**.
 3. **Ship**: When the user says "ship it" / "merge it" / "send to prod":
    - Merge the feature branch into `main`
    - Push `main` (triggers **Vercel production deployment**)
+   - Mark the Linear issue as **Done**
    - Delete the feature branch (local + remote)
-4. **Abort**: If the user says "scrap it" / "nah" — delete the branch, checkout `main`.
+4. **Abort**: If the user says "scrap it" / "nah" — delete the branch, checkout `main`, cancel the Linear issue.
 
 ### Preview Safety
 
