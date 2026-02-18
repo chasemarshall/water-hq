@@ -594,6 +594,7 @@ function ClaimModal({
   const [date, setDate] = useState("");
   const [duration, setDuration] = useState(15);
   const [recurring, setRecurring] = useState(false);
+  const [overlapError, setOverlapError] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -607,6 +608,7 @@ function ClaimModal({
       setDate(getToday());
       setDuration(15);
       setRecurring(false);
+      setOverlapError(false);
     }
   }, [isOpen]);
 
@@ -631,7 +633,7 @@ function ClaimModal({
       });
 
       if (overlap) {
-        alert("This time overlaps with an existing slot. Pick a different time.");
+        setOverlapError(true);
         return;
       }
     }
@@ -666,6 +668,36 @@ function ClaimModal({
             exit={{ y: 100, opacity: 0 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
           >
+            {/* Overlap error toast */}
+            <AnimatePresence>
+              {overlapError && (
+                <motion.div
+                  className="brutal-card-sm bg-coral text-white rounded-xl p-4 mb-4 flex items-center gap-3"
+                  initial={{ opacity: 0, y: -20, scale: 0.9 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                >
+                  <span className="text-2xl shrink-0">&#x26A0;&#xFE0F;</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-display text-sm uppercase leading-tight">
+                      Time Conflict
+                    </p>
+                    <p className="font-mono text-xs mt-0.5 opacity-90">
+                      This overlaps with an existing slot. Pick a different time.
+                    </p>
+                  </div>
+                  <motion.button
+                    className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg bg-white/20 font-bold text-sm"
+                    onClick={() => setOverlapError(false)}
+                    whileTap={{ scale: 0.85 }}
+                  >
+                    &#x2715;
+                  </motion.button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             <h3 className="font-display text-2xl uppercase mb-6">
               Claim a Slot
             </h3>
@@ -680,7 +712,7 @@ function ClaimModal({
                   type="date"
                   value={date}
                   min={getToday()}
-                  onChange={(e) => setDate(e.target.value)}
+                  onChange={(e) => { setDate(e.target.value); setOverlapError(false); }}
                   className="brutal-input w-full rounded-xl"
                 />
               </div>
@@ -693,7 +725,7 @@ function ClaimModal({
                 <input
                   type="time"
                   value={time}
-                  onChange={(e) => setTime(e.target.value)}
+                  onChange={(e) => { setTime(e.target.value); setOverlapError(false); }}
                   className="brutal-input w-full rounded-xl"
                 />
               </div>
@@ -710,7 +742,7 @@ function ClaimModal({
                       className={`brutal-btn py-3 rounded-xl font-mono font-bold text-sm ${
                         duration === d ? "bg-lime" : "bg-white"
                       }`}
-                      onClick={() => setDuration(d)}
+                      onClick={() => { setDuration(d); setOverlapError(false); }}
                     >
                       {d}m
                     </button>
