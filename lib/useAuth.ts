@@ -1,16 +1,14 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
+  createUserWithEmailAndPassword,
   onAuthStateChanged,
-  PhoneAuthProvider,
-  RecaptchaVerifier,
-  signInWithCredential,
+  signInWithEmailAndPassword,
   signInWithPopup,
   signInWithRedirect,
   signOut as firebaseSignOut,
   User,
-  AuthError,
 } from "firebase/auth";
 import { ref, get, set } from "firebase/database";
 import { auth, googleProvider, db } from "./firebase";
@@ -20,13 +18,12 @@ interface AuthState {
   loading: boolean;
   error: string | null;
   signIn: () => Promise<void>;
-  sendPhoneCode: (phoneNumber: string) => Promise<void>;
-  confirmPhoneCode: (code: string) => Promise<void>;
+  emailSignIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
 async function checkAndWhitelistAtPath(
-  allowedPath: "allowedEmails" | "allowedPhoneNumbers",
+  allowedPath: "allowedEmails",
   value: string
 ): Promise<{ allowed: boolean }> {
   const snap = await get(ref(db, allowedPath));
@@ -59,29 +56,20 @@ export function useAuth(): AuthState {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const phoneVerificationIdRef = useRef<string | null>(null);
-  const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
-
-  const clearPhoneAuthState = useCallback(() => {
-    phoneVerificationIdRef.current = null;
-    if (recaptchaVerifierRef.current) {
-      recaptchaVerifierRef.current.clear();
-      recaptchaVerifierRef.current = null;
-    }
-  }, []);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         try {
           const email = firebaseUser.email ?? "";
-          const phoneNumber = firebaseUser.phoneNumber ?? "";
-          const check = email
-            ? checkAndWhitelistAtPath("allowedEmails", email)
-            : phoneNumber
-              ? checkAndWhitelistAtPath("allowedPhoneNumbers", phoneNumber)
-              : Promise.resolve({ allowed: false });
-          const { allowed } = await check;
+          if (!email) {
+            await firebaseSignOut(auth);
+            setUser(null);
+            setError("Access denied. No email associated with this account.");
+            setLoading(false);
+            return;
+          }
+          const { allowed } = await checkAndWhitelistAtPath("allowedEmails", email);
           if (!allowed) {
             await firebaseSignOut(auth);
             setUser(null);
@@ -100,11 +88,8 @@ export function useAuth(): AuthState {
       setLoading(false);
     });
 
-    return () => {
-      unsub();
-      clearPhoneAuthState();
-    };
-  }, [clearPhoneAuthState]);
+    return () => unsub();
+  }, []);
 
   const signIn = useCallback(async () => {
     setError(null);
@@ -127,64 +112,42 @@ export function useAuth(): AuthState {
     }
   }, []);
 
+  const emailSignIn = useCallback(async (email: string, password: string) => {
+    setError(null);
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (err: unknown) {
+      const authCode = (err as { code?: string })?.code;
+      if (authCode === "auth/user-not-found" || authCode === "auth/invalid-credential") {
+        // Account doesn't exist, create it
+        try {
+          await createUserWithEmailAndPassword(auth, email, password);
+        } catch (createErr: unknown) {
+          const createCode = (createErr as { code?: string })?.code;
+          if (createCode === "auth/email-already-in-use") {
+            setError("Incorrect password. Please try again.");
+          } else if (createCode === "auth/weak-password") {
+            setError("Password must be at least 6 characters.");
+          } else {
+            setError("Sign-in failed. Please try again.");
+          }
+        }
+      } else if (authCode === "auth/wrong-password") {
+        setError("Incorrect password. Please try again.");
+      } else if (authCode === "auth/invalid-email") {
+        setError("Invalid email address.");
+      } else if (authCode === "auth/too-many-requests") {
+        setError("Too many attempts. Please try again later.");
+      } else {
+        setError("Sign-in failed. Please try again.");
+      }
+    }
+  }, []);
+
   const signOut = useCallback(async () => {
     setError(null);
     await firebaseSignOut(auth);
   }, []);
 
-  const sendPhoneCode = useCallback(async (phoneNumber: string) => {
-    setError(null);
-    try {
-      // Clear any previous verifier to avoid stale state
-      if (recaptchaVerifierRef.current) {
-        recaptchaVerifierRef.current.clear();
-        recaptchaVerifierRef.current = null;
-      }
-      const verifier = new RecaptchaVerifier(auth, "phone-recaptcha-container", {
-        size: "invisible",
-      });
-      recaptchaVerifierRef.current = verifier;
-      // Render the reCAPTCHA widget before verifying
-      await verifier.render();
-      const provider = new PhoneAuthProvider(auth);
-      const verificationId = await provider.verifyPhoneNumber(phoneNumber, verifier);
-      phoneVerificationIdRef.current = verificationId;
-    } catch (err) {
-      console.error("Phone auth error:", err);
-      const authCode = (err as AuthError)?.code;
-      if (authCode === "auth/too-many-requests") {
-        setError("Too many attempts. Please try again later.");
-      } else {
-        setError("Could not send code. Check the phone number and try again.");
-      }
-      clearPhoneAuthState();
-      throw err;
-    }
-  }, [clearPhoneAuthState]);
-
-  const confirmPhoneCode = useCallback(async (code: string) => {
-    setError(null);
-    if (!phoneVerificationIdRef.current) {
-      setError("Please request a verification code first.");
-      throw new Error("Missing verification ID");
-    }
-
-    try {
-      const credential = PhoneAuthProvider.credential(phoneVerificationIdRef.current, code);
-      await signInWithCredential(auth, credential);
-      phoneVerificationIdRef.current = null;
-    } catch (err) {
-      const authCode = (err as AuthError)?.code;
-      if (authCode === "auth/code-expired") {
-        setError("Verification code expired. Please request a new code.");
-      } else if (authCode === "auth/invalid-verification-code") {
-        setError("Invalid code. Please re-enter the digits.");
-      } else {
-        setError("Could not verify code. Please try again.");
-      }
-      throw err;
-    }
-  }, []);
-
-  return { user, loading, error, signIn, sendPhoneCode, confirmPhoneCode, signOut };
+  return { user, loading, error, signIn, emailSignIn, signOut };
 }

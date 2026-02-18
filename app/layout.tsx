@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Archivo_Black, Space_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
 
 const archivoBlack = Archivo_Black({
@@ -44,7 +45,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${archivoBlack.variable} ${spaceMono.variable}`}>
-      <body className="font-mono antialiased">{children}</body>
+      <body className="font-mono antialiased">
+        {children}
+        <Analytics />
+      </body>
     </html>
   );
 }

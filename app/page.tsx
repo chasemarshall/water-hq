@@ -882,21 +882,19 @@ function TickerBar() {
 // ============================================================
 function LoginScreen({
   onGoogleSignIn,
-  onPhoneSendCode,
-  onPhoneConfirmCode,
+  onEmailSignIn,
   error,
 }: {
   onGoogleSignIn: () => void;
-  onPhoneSendCode: (phoneNumber: string) => Promise<void>;
-  onPhoneConfirmCode: (code: string) => Promise<void>;
+  onEmailSignIn: (email: string, password: string) => Promise<void>;
   error: string | null;
 }) {
   const [verified, setVerified] = useState(false);
   const [verifying, setVerifying] = useState(false);
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [code, setCode] = useState("");
-  const [phoneStep, setPhoneStep] = useState<"idle" | "enter-phone" | "enter-code">("idle");
-  const [phoneLoading, setPhoneLoading] = useState(false);
+  const [showEmailForm, setShowEmailForm] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [emailLoading, setEmailLoading] = useState(false);
 
   const handleTurnstileSuccess = async (token: string) => {
     setVerifying(true);
@@ -915,30 +913,15 @@ function LoginScreen({
     setVerifying(false);
   };
 
-  const handleSendPhoneCode = async () => {
-    if (!phoneNumber.trim()) return;
-    setPhoneLoading(true);
+  const handleEmailSignIn = async () => {
+    if (!email.trim() || !password.trim()) return;
+    setEmailLoading(true);
     try {
-      await onPhoneSendCode(phoneNumber.trim());
-      setPhoneStep("enter-code");
+      await onEmailSignIn(email.trim(), password.trim());
     } catch (err) {
-      console.error("Failed to send phone verification code", err);
+      console.error("Email sign-in failed", err);
     } finally {
-      setPhoneLoading(false);
-    }
-  };
-
-  const handleConfirmPhoneCode = async () => {
-    if (!code.trim()) return;
-    setPhoneLoading(true);
-    try {
-      await onPhoneConfirmCode(code.trim());
-      setCode("");
-      setPhoneStep("enter-phone");
-    } catch (err) {
-      console.error("Failed to confirm phone verification code", err);
-    } finally {
-      setPhoneLoading(false);
+      setEmailLoading(false);
     }
   };
 
@@ -1032,104 +1015,63 @@ function LoginScreen({
               Sign in with Google
             </motion.button>
 
-            <div id="phone-recaptcha-container" />
-
-            {phoneStep === "idle" ? (
-              <motion.button
-                className="brutal-btn bg-white w-full py-4 font-display text-xl rounded-xl flex items-center justify-center gap-3"
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
-                onClick={() => setPhoneStep("enter-phone")}
-              >
-                <span aria-hidden>📱</span>
-                Sign in with Phone
-              </motion.button>
-          ) : (
+              {showEmailForm ? (
               <motion.div
                 className="flex flex-col gap-3"
                 initial={{ y: 10, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.1 }}
               >
-                {phoneStep === "enter-phone" ? (
-                  <>
-                    <input
-                      type="tel"
-                      value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value)}
-                      placeholder="+1 555 123 4567"
-                      className="brutal-input w-full rounded-xl"
-                      autoComplete="tel"
-                    />
-                    <motion.button
-                      className="brutal-btn bg-white w-full py-4 font-display text-xl rounded-xl flex items-center justify-center gap-3"
-                      initial={{ scale: 0.9, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      transition={{ type: "spring", stiffness: 200 }}
-                      onClick={handleSendPhoneCode}
-                      disabled={phoneLoading || !phoneNumber.trim()}
-                    >
-                      {phoneLoading ? "Sending code..." : "Send Code"}
-                    </motion.button>
-                    <button
-                      className="font-mono text-xs font-bold uppercase tracking-wider underline self-start"
-                      onClick={() => {
-                        setPhoneStep("idle");
-                        setPhoneNumber("");
-                      }}
-                      type="button"
-                    >
-                      Back
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <input
-                      type="text"
-                      value={code}
-                      onChange={(e) => setCode(e.target.value)}
-                      placeholder="Enter 6-digit code"
-                      className="brutal-input w-full rounded-xl"
-                      autoComplete="one-time-code"
-                      inputMode="numeric"
-                    />
-                    <div className="flex gap-2">
-                      <motion.button
-                        className="brutal-btn bg-white flex-1 py-4 font-display text-lg rounded-xl flex items-center justify-center gap-2"
-                        initial={{ scale: 0.9, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{ type: "spring", stiffness: 200 }}
-                        onClick={handleConfirmPhoneCode}
-                        disabled={phoneLoading || !code.trim()}
-                      >
-                        {phoneLoading ? "Verifying..." : "Confirm Code"}
-                      </motion.button>
-                      <motion.button
-                        className="brutal-btn bg-white flex-1 py-4 font-display text-lg rounded-xl flex items-center justify-center gap-2"
-                        initial={{ scale: 0.9, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{ type: "spring", stiffness: 200 }}
-                        onClick={handleSendPhoneCode}
-                        disabled={phoneLoading}
-                      >
-                        {phoneLoading ? "Sending..." : "Resend"}
-                      </motion.button>
-                    </div>
-                    <button
-                      className="font-mono text-xs font-bold uppercase tracking-wider underline self-start"
-                      onClick={() => {
-                        setPhoneStep("enter-phone");
-                        setCode("");
-                      }}
-                      type="button"
-                    >
-                      Use a different number
-                    </button>
-                  </>
-                )}
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Email address"
+                  className="brutal-input w-full rounded-xl"
+                  autoComplete="email"
+                />
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Password"
+                  className="brutal-input w-full rounded-xl"
+                  autoComplete="current-password"
+                  onKeyDown={(e) => { if (e.key === "Enter") handleEmailSignIn(); }}
+                />
+                <motion.button
+                  className="brutal-btn bg-white w-full py-4 font-display text-xl rounded-xl flex items-center justify-center gap-3"
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ type: "spring", stiffness: 200 }}
+                  onClick={handleEmailSignIn}
+                  disabled={emailLoading || !email.trim() || !password.trim()}
+                >
+                  {emailLoading ? "Signing in..." : "Sign In"}
+                </motion.button>
+                <button
+                  className="font-mono text-xs font-bold uppercase tracking-wider underline self-start"
+                  onClick={() => {
+                    setShowEmailForm(false);
+                    setEmail("");
+                    setPassword("");
+                  }}
+                  type="button"
+                >
+                  Back
+                </button>
               </motion.div>
-          )}
+            ) : (
+              <motion.button
+                className="brutal-btn bg-white w-full py-4 font-display text-xl rounded-xl flex items-center justify-center gap-3"
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
+                onClick={() => setShowEmailForm(true)}
+              >
+                Sign in with Email
+              </motion.button>
+            )}
           </div>
         </>
       )}
@@ -1248,8 +1190,7 @@ export default function Home() {
     loading: authLoading,
     error: authError,
     signIn,
-    sendPhoneCode,
-    confirmPhoneCode,
+    emailSignIn,
     signOut,
   } = useAuth();
   const [currentUser, setCurrentUser] = useState<string | null>(null);
@@ -1535,8 +1476,7 @@ export default function Home() {
       <main className="max-w-lg mx-auto relative">
         <LoginScreen
           onGoogleSignIn={signIn}
-          onPhoneSendCode={sendPhoneCode}
-          onPhoneConfirmCode={confirmPhoneCode}
+          onEmailSignIn={emailSignIn}
           error={authError}
         />
       </main>
