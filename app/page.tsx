@@ -1130,7 +1130,7 @@ function LoginScreen({
                 </>
               )}
             </motion.div>
-          )
+          )}
         </>
       )}
 
