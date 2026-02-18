@@ -296,17 +296,22 @@ function ShowerButton({
   status,
   currentUser,
   slots,
+  log,
   onEnd,
 }: {
   status: ShowerStatus | null;
   currentUser: string;
   slots: SlotsMap | null;
+  log: LogMap | null;
   onEnd: (startedAt: number) => void;
 }) {
   const isOccupied = status?.currentUser != null;
   const isMe = status?.currentUser === currentUser;
   const canAct = !isOccupied || isMe;
   const [cooldown, setCooldown] = useState(false);
+  const recentShower = !isOccupied && log
+    ? Object.values(log).find((entry) => Date.now() - entry.endedAt < 30 * 60 * 1000)
+    : null;
 
   // Enforce minimum shower duration before allowing stop
   useEffect(() => {
@@ -378,7 +383,7 @@ function ShowerButton({
           ? cooldown ? "bg-gray-300 text-ink" : "bg-coral text-white"
           : isOccupied
             ? "bg-gray-200 text-ink"
-            : "bg-lime text-ink"
+            : recentShower ? "bg-sky text-ink" : "bg-lime text-ink"
       }`}
       disabled={!canAct || cooldown}
       onClick={handleClick}
@@ -1464,6 +1469,7 @@ export default function Home() {
                 status={status}
                 currentUser={currentUser}
                 slots={slots}
+                log={log}
                 onEnd={logShower}
               />
             </motion.div>
