@@ -916,6 +916,8 @@ function LoginScreen({
     try {
       await onPhoneSendCode(phoneNumber.trim());
       setPhoneStep("enter-code");
+    } catch (err) {
+      console.error("Failed to send phone verification code", err);
     } finally {
       setPhoneLoading(false);
     }
@@ -928,6 +930,8 @@ function LoginScreen({
       await onPhoneConfirmCode(code.trim());
       setCode("");
       setPhoneStep("enter-phone");
+    } catch (err) {
+      console.error("Failed to confirm phone verification code", err);
     } finally {
       setPhoneLoading(false);
     }
@@ -1063,17 +1067,30 @@ function LoginScreen({
                   autoComplete="one-time-code"
                   inputMode="numeric"
                 />
-                <motion.button
-                  className="brutal-btn bg-white px-8 py-5 font-display text-xl rounded-xl flex items-center gap-3"
-                  initial={{ scale: 0.9, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ type: "spring", stiffness: 200 }}
-                  onClick={handleConfirmPhoneCode}
-                  disabled={phoneLoading || !code.trim()}
-                >
-                  <span aria-hidden>🔐</span>
-                  {phoneLoading ? "Verifying..." : "Confirm phone code"}
-                </motion.button>
+                <div className="flex gap-2">
+                  <motion.button
+                    className="brutal-btn bg-white px-8 py-5 font-display text-xl rounded-xl flex items-center gap-3"
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ type: "spring", stiffness: 200 }}
+                    onClick={handleConfirmPhoneCode}
+                    disabled={phoneLoading || !code.trim()}
+                  >
+                    <span aria-hidden>🔐</span>
+                    {phoneLoading ? "Verifying..." : "Confirm phone code"}
+                  </motion.button>
+                  <motion.button
+                    className="brutal-btn bg-white px-8 py-5 font-display text-xl rounded-xl flex items-center gap-3"
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ type: "spring", stiffness: 200 }}
+                    onClick={handleSendPhoneCode}
+                    disabled={phoneLoading}
+                  >
+                    <span aria-hidden>🔁</span>
+                    {phoneLoading ? "Sending..." : "Resend code"}
+                  </motion.button>
+                </div>
                 <button
                   className="font-mono text-xs font-bold uppercase tracking-wider underline self-start"
                   onClick={() => {
