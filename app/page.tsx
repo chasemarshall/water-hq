@@ -1271,12 +1271,11 @@ export default function Home() {
       const now = Date.now();
 
       for (const [slotId, slot] of Object.entries(slots)) {
-        if (slot.user !== currentUser) continue;
-
         const slotStartTs = getSlotStartTimestamp(slot);
         const ownerTenDiff = slotStartTs - TEN_MINUTES_MS - now;
         const ownerStartDiff = slotStartTs - now;
 
+        // Notify the slot owner 10 minutes before their shower
         const ownerTenKey = getSlotAlertKey(slotId, "owner-ten");
         if (
           ownerTenDiff >= 0 &&
@@ -1291,6 +1290,7 @@ export default function Home() {
           sentSlotNotificationsRef.current.add(ownerTenKey);
         }
 
+        // Notify the slot owner when their shower starts
         const ownerStartKey = getSlotAlertKey(slotId, "owner-start");
         if (
           ownerStartDiff >= 0 &&
@@ -1305,6 +1305,7 @@ export default function Home() {
           sentSlotNotificationsRef.current.add(ownerStartKey);
         }
 
+        // Notify other users 10 minutes before
         const othersTenKey = getSlotAlertKey(slotId, "others-ten");
         if (
           ownerTenDiff >= 0 &&
@@ -1314,11 +1315,12 @@ export default function Home() {
           sendPushNotification({
             title: "🚿 Shower Slot Soon",
             body: `${slot.user}'s shower starts in 10 minutes (${formatTimeRange(slot.startTime, slot.durationMinutes)}).`,
-            targetUsers: USERS.filter((user) => user !== slot.user),
+            excludeUser: slot.user,
           });
           sentSlotNotificationsRef.current.add(othersTenKey);
         }
 
+        // Notify other users when shower starts
         const othersStartKey = getSlotAlertKey(slotId, "others-start");
         if (
           ownerStartDiff >= 0 &&
@@ -1328,7 +1330,7 @@ export default function Home() {
           sendPushNotification({
             title: "🚿 Shower Slot Starting",
             body: `${slot.user}'s shower slot is starting now (${formatTimeRange(slot.startTime, slot.durationMinutes)}).`,
-            targetUsers: USERS.filter((user) => user !== slot.user),
+            excludeUser: slot.user,
           });
           sentSlotNotificationsRef.current.add(othersStartKey);
         }
