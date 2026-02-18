@@ -13,6 +13,8 @@ const DURATIONS = [15, 20, 30, 45, 60];
 const AUTO_RELEASE_SECONDS = 2700;
 const MIN_SHOWER_SECONDS = 5;
 const USER_STORAGE_KEY = "showerTimerUser";
+const SLOT_ALERT_WINDOW_MS = 90_000;
+const TEN_MINUTES_MS = 10 * 60 * 1000;
 
 interface ShowerStatus {
   currentUser: string | null;
@@ -220,7 +222,11 @@ function StatusBanner({
       if (status?.startedAt) onAutoRelease(status.startedAt);
       set(ref(db, "status"), { currentUser: null, startedAt: null });
       if (status?.currentUser) {
-        sendPushNotification("🚿 SHOWER", `${status.currentUser} is done`, status.currentUser);
+        sendPushNotification({
+          title: "🚿 SHOWER",
+          body: `${status.currentUser} is done`,
+          excludeUser: status.currentUser,
+        });
       }
     }
   }, [isMe, elapsed]);
@@ -304,7 +310,11 @@ function ShowerButton({
     if (isMe) {
       if (status?.startedAt) onEnd(status.startedAt);
       set(ref(db, "status"), { currentUser: null, startedAt: null });
-      sendPushNotification("🚿 SHOWER", `${currentUser} is done`, currentUser);
+      sendPushNotification({
+        title: "🚿 SHOWER",
+        body: `${currentUser} is done`,
+        excludeUser: currentUser,
+      });
       return;
     }
 
@@ -328,7 +338,11 @@ function ShowerButton({
     }
 
     set(ref(db, "status"), { currentUser, startedAt: Date.now() });
-    sendPushNotification("🚿 SHOWER", `${currentUser} started showering`, currentUser);
+    sendPushNotification({
+      title: "🚿 SHOWER",
+      body: `${currentUser} started showering`,
+      excludeUser: currentUser,
+    });
   };
 
   const label = isMe
@@ -944,16 +958,36 @@ async function subscribeToPush(user: string) {
   }
 }
 
-async function sendPushNotification(title: string, body: string, excludeUser: string) {
+async function sendPushNotification({
+  title,
+  body,
+  excludeUser,
+  targetUsers,
+}: {
+  title: string;
+  body: string;
+  excludeUser?: string;
+  targetUsers?: string[];
+}) {
   try {
     await fetch("/api/push-notify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, body, excludeUser }),
+      body: JSON.stringify({ title, body, excludeUser, targetUsers }),
     });
   } catch {
     // Ignore send failures
   }
+}
+
+function getSlotStartTimestamp(slot: Slot): number {
+  const [year, month, day] = slot.date.split("-").map(Number);
+  const [hours, minutes] = slot.startTime.split(":").map(Number);
+  return new Date(year, month - 1, day, hours, minutes, 0, 0).getTime();
+}
+
+function getSlotAlertKey(slotId: string, alertType: "owner-ten" | "owner-start" | "others-ten" | "others-start"): string {
+  return `${slotId}:${alertType}`;
 }
 
 // ============================================================
@@ -969,6 +1003,7 @@ export default function Home() {
   const [showModal, setShowModal] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [notifPermission, setNotifPermission] = useState<NotificationPermission | "unsupported">("unsupported");
+  const sentSlotNotificationsRef = useRef<Set<string>>(new Set());
 
   // Request notification permission (called from button tap on iOS, or auto on other browsers)
   const requestNotifPermission = useCallback(async () => {
@@ -1029,6 +1064,96 @@ export default function Home() {
       subscribeToPush(currentUser);
     }
   }, [currentUser]);
+
+  useEffect(() => {
+    if (!currentUser || !slots) return;
+
+    const notifyUpcomingSlots = () => {
+      const now = Date.now();
+
+      for (const [slotId, slot] of Object.entries(slots)) {
+        if (slot.user !== currentUser) continue;
+
+        const slotStartTs = getSlotStartTimestamp(slot);
+        const ownerTenDiff = slotStartTs - TEN_MINUTES_MS - now;
+        const ownerStartDiff = slotStartTs - now;
+
+        const ownerTenKey = getSlotAlertKey(slotId, "owner-ten");
+        if (
+          ownerTenDiff >= 0 &&
+          ownerTenDiff <= SLOT_ALERT_WINDOW_MS &&
+          !sentSlotNotificationsRef.current.has(ownerTenKey)
+        ) {
+          sendPushNotification({
+            title: "🚿 YOUR SHOWER IN 10 MIN",
+            body: `Your slot starts at ${formatTimeRange(slot.startTime, slot.durationMinutes)}.`,
+            targetUsers: [slot.user],
+          });
+          sentSlotNotificationsRef.current.add(ownerTenKey);
+        }
+
+        const ownerStartKey = getSlotAlertKey(slotId, "owner-start");
+        if (
+          ownerStartDiff >= 0 &&
+          ownerStartDiff <= SLOT_ALERT_WINDOW_MS &&
+          !sentSlotNotificationsRef.current.has(ownerStartKey)
+        ) {
+          sendPushNotification({
+            title: "🚿 SHOWER TIME",
+            body: `It's time for your shower slot (${formatTimeRange(slot.startTime, slot.durationMinutes)}).`,
+            targetUsers: [slot.user],
+          });
+          sentSlotNotificationsRef.current.add(ownerStartKey);
+        }
+
+        const othersTenKey = getSlotAlertKey(slotId, "others-ten");
+        if (
+          ownerTenDiff >= 0 &&
+          ownerTenDiff <= SLOT_ALERT_WINDOW_MS &&
+          !sentSlotNotificationsRef.current.has(othersTenKey)
+        ) {
+          sendPushNotification({
+            title: "🚿 Shower Slot Soon",
+            body: `${slot.user}'s shower starts in 10 minutes (${formatTimeRange(slot.startTime, slot.durationMinutes)}).`,
+            targetUsers: USERS.filter((user) => user !== slot.user),
+          });
+          sentSlotNotificationsRef.current.add(othersTenKey);
+        }
+
+        const othersStartKey = getSlotAlertKey(slotId, "others-start");
+        if (
+          ownerStartDiff >= 0 &&
+          ownerStartDiff <= SLOT_ALERT_WINDOW_MS &&
+          !sentSlotNotificationsRef.current.has(othersStartKey)
+        ) {
+          sendPushNotification({
+            title: "🚿 Shower Slot Starting",
+            body: `${slot.user}'s shower slot is starting now (${formatTimeRange(slot.startTime, slot.durationMinutes)}).`,
+            targetUsers: USERS.filter((user) => user !== slot.user),
+          });
+          sentSlotNotificationsRef.current.add(othersStartKey);
+        }
+      }
+
+      const validKeys = new Set<string>();
+      for (const [slotId, slot] of Object.entries(slots)) {
+        const slotStartTs = getSlotStartTimestamp(slot);
+        if (slotStartTs >= now - 5 * 60 * 1000) {
+          validKeys.add(getSlotAlertKey(slotId, "owner-ten"));
+          validKeys.add(getSlotAlertKey(slotId, "owner-start"));
+          validKeys.add(getSlotAlertKey(slotId, "others-ten"));
+          validKeys.add(getSlotAlertKey(slotId, "others-start"));
+        }
+      }
+      sentSlotNotificationsRef.current = new Set(
+        [...sentSlotNotificationsRef.current].filter((key) => validKeys.has(key)),
+      );
+    };
+
+    notifyUpcomingSlots();
+    const timer = window.setInterval(notifyUpcomingSlots, 30_000);
+    return () => window.clearInterval(timer);
+  }, [currentUser, slots]);
 
   // Firebase listeners
   useEffect(() => {

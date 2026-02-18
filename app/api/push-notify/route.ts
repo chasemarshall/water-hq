@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
 
     webpush.setVapidDetails("mailto:shower-tracker@example.com", vapidPublic, vapidPrivate);
 
-    const { title, body, excludeUser } = await req.json();
+    const { title, body, excludeUser, targetUsers } = await req.json();
 
     if (!title || !body) {
       return NextResponse.json({ error: "Missing title or body" }, { status: 400 });
@@ -40,8 +40,14 @@ export async function POST(req: NextRequest) {
     const staleKeys: string[] = [];
     let sent = 0;
 
+    const targets = Array.isArray(targetUsers)
+      ? new Set(targetUsers.filter((value: unknown): value is string => typeof value === "string"))
+      : null;
+
     await Promise.allSettled(
       Object.entries(data).map(async ([key, record]) => {
+        if (targets && !targets.has(record.user)) return;
+
         // Skip the user who triggered the notification
         if (excludeUser && record.user === excludeUser) return;
 
