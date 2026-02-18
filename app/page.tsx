@@ -189,11 +189,13 @@ function StatusBanner({
   status,
   currentUser,
   log,
+  slots,
   onAutoRelease,
 }: {
   status: ShowerStatus | null;
   currentUser: string;
   log: LogMap | null;
+  slots: SlotsMap | null;
   onAutoRelease: (startedAt: number) => void;
 }) {
   const [elapsed, setElapsed] = useState(0);
@@ -206,6 +208,24 @@ function StatusBanner({
   const recentShower = !isOccupied && log
     ? Object.values(log).find((entry) => Date.now() - entry.endedAt < 30 * 60 * 1000)
     : null;
+
+  // Find if someone has a slot happening right now
+  const activeSlotNow = (() => {
+    if (isOccupied || !slots) return null;
+    const now = Date.now();
+    const today = getToday();
+    for (const slot of Object.values(slots)) {
+      if (slot.date !== today) continue;
+      const [h, m] = slot.startTime.split(":").map(Number);
+      const slotStart = new Date();
+      slotStart.setHours(h, m, 0, 0);
+      const slotEnd = slotStart.getTime() + slot.durationMinutes * 60 * 1000;
+      if (now >= slotStart.getTime() && now <= slotEnd) {
+        return slot;
+      }
+    }
+    return null;
+  })();
 
   useEffect(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
@@ -246,7 +266,7 @@ function StatusBanner({
   return (
     <motion.div
       className={`brutal-card rounded-2xl p-6 sm:p-8 text-center ${
-        isOccupied ? "bg-coral pulse-occupied" : recentShower ? "bg-sky" : "bg-lime"
+        isOccupied ? "bg-coral pulse-occupied" : activeSlotNow ? "bg-yolk" : recentShower ? "bg-sky" : "bg-lime"
       }`}
       layout
       animate={{ scale: isOccupied ? [1, 1.01, 1] : 1 }}
@@ -259,6 +279,13 @@ function StatusBanner({
               Occupied
             </span>
             {status!.currentUser} is showering
+          </>
+        ) : activeSlotNow ? (
+          <>
+            <span className="block text-base font-mono font-bold mb-1 uppercase tracking-widest">
+              Reserved
+            </span>
+            {activeSlotNow.user}&apos;s slot — {formatTimeRange(activeSlotNow.startTime, activeSlotNow.durationMinutes)}
           </>
         ) : recentShower ? (
           <>
@@ -1598,7 +1625,7 @@ export default function Home() {
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.3 }}
             >
-              <StatusBanner status={status} currentUser={currentUser} log={log} onAutoRelease={logShower} />
+              <StatusBanner status={status} currentUser={currentUser} log={log} slots={slots} onAutoRelease={logShower} />
             </motion.div>
 
             {/* Shower button */}
