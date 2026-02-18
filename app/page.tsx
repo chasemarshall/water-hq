@@ -1069,6 +1069,7 @@ function LoginScreen({
                 transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
                 onClick={() => setShowEmailForm(true)}
               >
+                <span aria-hidden>📧</span>
                 Sign in with Email
               </motion.button>
             )}
