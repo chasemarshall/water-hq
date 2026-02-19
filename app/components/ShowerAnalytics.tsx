@@ -28,7 +28,7 @@ export function ShowerAnalytics({ logHistory, getAuthToken }: ShowerAnalyticsPro
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
-  const handleAskAI = async () => {
+  const handleAskAI = async (spicy = false) => {
     if (!logHistory) return;
     setAiLoading(true);
     setAiError(null);
@@ -42,7 +42,7 @@ export function ShowerAnalytics({ logHistory, getAuthToken }: ShowerAnalyticsPro
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`,
         },
-        body: JSON.stringify({ entries }),
+        body: JSON.stringify({ entries, spicy }),
       });
       if (!res.ok) throw new Error("Failed to get insights");
       const data = await res.json();
@@ -313,24 +313,46 @@ export function ShowerAnalytics({ logHistory, getAuthToken }: ShowerAnalyticsPro
             {aiInsights ? (
               <div className="brutal-card-sm bg-white rounded-xl p-4">
                 <p className="font-mono text-sm whitespace-pre-wrap">{aiInsights}</p>
+                <div className="flex gap-2 mt-3">
+                  <motion.button
+                    className="brutal-btn bg-white px-4 py-2 rounded-xl font-mono text-xs font-bold uppercase tracking-wider"
+                    onClick={() => handleAskAI(false)}
+                    whileTap={{ scale: 0.97 }}
+                    disabled={aiLoading}
+                  >
+                    {aiLoading ? "Thinking..." : "Refresh"}
+                  </motion.button>
+                  <motion.button
+                    className="brutal-btn bg-coral px-3 py-2 rounded-xl text-lg"
+                    onClick={() => handleAskAI(true)}
+                    whileTap={{ scale: 0.95 }}
+                    disabled={aiLoading}
+                    title="Spicy mode"
+                  >
+                    💧
+                  </motion.button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex gap-2">
                 <motion.button
-                  className="brutal-btn bg-white px-4 py-2 rounded-xl font-mono text-xs font-bold uppercase tracking-wider mt-3"
-                  onClick={handleAskAI}
+                  className="brutal-btn bg-lime flex-1 py-4 rounded-xl font-display text-lg uppercase"
+                  onClick={() => handleAskAI(false)}
                   whileTap={{ scale: 0.97 }}
                   disabled={aiLoading}
                 >
-                  {aiLoading ? "Thinking..." : "Refresh"}
+                  {aiLoading ? "Thinking..." : "Ask AI"}
+                </motion.button>
+                <motion.button
+                  className="brutal-btn bg-coral py-4 px-5 rounded-xl text-2xl"
+                  onClick={() => handleAskAI(true)}
+                  whileTap={{ scale: 0.95 }}
+                  disabled={aiLoading}
+                  title="Spicy mode"
+                >
+                  💧
                 </motion.button>
               </div>
-            ) : (
-              <motion.button
-                className="brutal-btn bg-lime w-full py-4 rounded-xl font-display text-lg uppercase"
-                onClick={handleAskAI}
-                whileTap={{ scale: 0.97 }}
-                disabled={aiLoading}
-              >
-                {aiLoading ? "Thinking..." : "Ask AI"}
-              </motion.button>
             )}
           </motion.div>
         </div>

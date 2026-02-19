@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "OpenRouter API key not configured" }, { status: 500 });
     }
 
-    const { entries } = await req.json();
+    const { entries, spicy } = await req.json();
     if (!entries || !Array.isArray(entries) || entries.length === 0) {
       return NextResponse.json({ error: "No log entries provided" }, { status: 400 });
     }
@@ -29,6 +29,12 @@ export async function POST(req: NextRequest) {
       durationMin: Math.round(e.durationSeconds / 60),
     }));
 
+    const systemPrompt = spicy
+      ? "You are a ruthlessly sarcastic, no-holds-barred roast comedian analyzing a family's shower habits for their app Water HQ. The family members are Chase, Livia, A.J., Dad, and Mom. Roast everyone. Be savage but ultimately loving — think family roast at Thanksgiving. Call people out by name. 3-5 brutal observations. Short and punchy. No markdown — plain text with emoji allowed. Go OFF."
+      : "You are a fun, witty analyst for a family shower coordination app called Water HQ. The family members are Chase, Livia, A.J., Dad, and Mom. Analyze their shower patterns and give 3-5 short, punchy insights. Be playful and specific. Use data to back up claims. Keep each insight to 1-2 sentences. No markdown formatting — plain text with emoji allowed.";
+
+    const model = spicy ? "x-ai/grok-3-mini-fast" : "google/gemini-2.0-flash-001";
+
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -36,11 +42,11 @@ export async function POST(req: NextRequest) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.0-flash-001",
+        model,
         messages: [
           {
             role: "system",
-            content: "You are a fun, witty analyst for a family shower coordination app called Water HQ. The family members are Chase, Livia, A.J., Dad, and Mom. Analyze their shower patterns and give 3-5 short, punchy insights. Be playful and specific. Use data to back up claims. Keep each insight to 1-2 sentences. No markdown formatting — plain text with emoji allowed.",
+            content: systemPrompt,
           },
           {
             role: "user",
