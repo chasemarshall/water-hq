@@ -270,7 +270,7 @@ export function ShowerAnalytics({ logHistory, getAuthToken }: ShowerAnalyticsPro
                   {stats.leaderboard.earlyBird.user}
                 </span>
                 <span className="font-mono text-xs text-gray-500">
-                  Early bird (
+                  Earliest (
                   {formatHour(Math.round(stats.leaderboard.earlyBird.avgHour))})
                 </span>
               </div>
@@ -280,7 +280,7 @@ export function ShowerAnalytics({ logHistory, getAuthToken }: ShowerAnalyticsPro
                   {stats.leaderboard.nightOwl.user}
                 </span>
                 <span className="font-mono text-xs text-gray-500">
-                  Night owl (
+                  Latest (
                   {formatHour(Math.round(stats.leaderboard.nightOwl.avgHour))})
                 </span>
               </div>
