@@ -14,7 +14,7 @@ export function UserSelectScreen({
     if (name === "Chase") return authEmail === "chasemarshall.f@gmail.com";
     return true;
   });
-  const colors = visibleUsers.map((name) => USER_COLORS[name] || "bg-white");
+  const colors = visibleUsers.map((name) => USER_COLORS[name] || "bg-surface");
 
   return (
     <motion.div
@@ -25,7 +25,7 @@ export function UserSelectScreen({
     >
       {/* Decorative top sticker */}
       <motion.div
-        className="brutal-card bg-white px-6 py-3 -rotate-2"
+        className="brutal-card bg-surface px-6 py-3 -rotate-2"
         initial={{ y: -40, opacity: 0, rotate: -8 }}
         animate={{ y: 0, opacity: 1, rotate: -2 }}
         transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
@@ -80,7 +80,7 @@ export function UserSelectScreen({
         {["\u{1F6BF}", "\u{1F525}", "\u{1F4A7}", "\u{1F9FC}"].map((emoji, i) => (
           <span
             key={i}
-            className="brutal-card-sm bg-white w-10 h-10 flex items-center justify-center text-lg rounded-lg"
+            className="brutal-card-sm bg-surface w-10 h-10 flex items-center justify-center text-lg rounded-lg"
             style={{ transform: `rotate(${(i - 1.5) * 5}deg)` }}
           >
             {emoji}

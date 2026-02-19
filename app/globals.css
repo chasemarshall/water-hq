@@ -5,18 +5,50 @@
 :root {
   --paper: #F5F0E8;
   --ink: #1a1a1a;
+  --frame: #1a1a1a;
   --lime: #BAFF39;
   --coral: #FF5C5C;
+  --sky: #67E8F9;
+  --yolk: #FFD166;
+  --mint: #06D6A0;
+  --bubblegum: #EF476F;
+  --surface: #FFFFFF;
+  --muted: #6B7280;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #1C1917;
+    --ink: #E7E5E4;
+    --frame: #57534E;
+    --lime: #A3D911;
+    --coral: #FF6B6B;
+    --sky: #4DD8CC;
+    --yolk: #F0C050;
+    --mint: #34D399;
+    --bubblegum: #F472B6;
+    --surface: #342F2D;
+    --muted: #A8A29E;
+  }
 }
 
 * {
   box-sizing: border-box;
 }
 
+html {
+  background-color: var(--paper);
+}
+
 body {
   background-color: var(--paper);
   color: var(--ink);
   min-height: 100dvh;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 /* Neobrutalist noise texture overlay */
@@ -32,10 +64,16 @@ body::before {
   background-size: 256px 256px;
 }
 
+@media (prefers-color-scheme: dark) {
+  body::before {
+    opacity: 0.05;
+  }
+}
+
 /* Neobrutalist button press effect */
 .brutal-btn {
-  border: 3px solid var(--ink);
-  box-shadow: 5px 5px 0px var(--ink);
+  border: 3px solid var(--frame);
+  box-shadow: 5px 5px 0px var(--frame);
   transition: transform 0.1s ease, box-shadow 0.1s ease;
   cursor: pointer;
   position: relative;
@@ -43,37 +81,37 @@ body::before {
 
 .brutal-btn:hover {
   transform: translate(-1px, -1px);
-  box-shadow: 6px 6px 0px var(--ink);
+  box-shadow: 6px 6px 0px var(--frame);
 }
 
 .brutal-btn:active {
   transform: translate(3px, 3px);
-  box-shadow: 2px 2px 0px var(--ink);
+  box-shadow: 2px 2px 0px var(--frame);
 }
 
 .brutal-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
-  box-shadow: 5px 5px 0px var(--ink);
+  box-shadow: 5px 5px 0px var(--frame);
 }
 
 /* Brutal card */
 .brutal-card {
-  border: 3px solid var(--ink);
-  box-shadow: 5px 5px 0px var(--ink);
+  border: 3px solid var(--frame);
+  box-shadow: 5px 5px 0px var(--frame);
 }
 
 /* Brutal card small */
 .brutal-card-sm {
-  border: 2px solid var(--ink);
-  box-shadow: 3px 3px 0px var(--ink);
+  border: 2px solid var(--frame);
+  box-shadow: 3px 3px 0px var(--frame);
 }
 
 /* Pulsing glow for occupied status */
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 5px 5px 0px var(--ink), 0 0 0px var(--coral); }
-  50% { box-shadow: 5px 5px 0px var(--ink), 0 0 30px var(--coral); }
+  0%, 100% { box-shadow: 5px 5px 0px var(--frame), 0 0 0px var(--coral); }
+  50% { box-shadow: 5px 5px 0px var(--frame), 0 0 30px var(--coral); }
 }
 
 .pulse-occupied {
@@ -124,8 +162,9 @@ body::before {
 
 /* Neobrutalist input */
 .brutal-input {
-  border: 3px solid var(--ink);
-  background: white;
+  border: 3px solid var(--frame);
+  background: var(--surface);
+  color: var(--ink);
   padding: 12px 16px;
   font-family: var(--font-space-mono), monospace;
   font-size: 16px;
@@ -138,7 +177,7 @@ body::before {
 }
 
 .brutal-input:focus {
-  box-shadow: 3px 3px 0px var(--ink);
+  box-shadow: 3px 3px 0px var(--frame);
 }
 
 /* Scrollbar styling */
@@ -151,6 +190,6 @@ body::before {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--ink);
+  background: var(--frame);
   border: 2px solid var(--paper);
 }

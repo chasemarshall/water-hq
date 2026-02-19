@@ -67,7 +67,7 @@ export function ShowerAnalytics({ logHistory, getAuthToken }: ShowerAnalyticsPro
     <div>
       {/* Section Header — tap to expand/collapse */}
       <motion.button
-        className="brutal-btn bg-white w-full px-4 py-3 rounded-xl flex items-center justify-between"
+        className="brutal-btn bg-surface w-full px-4 py-3 rounded-xl flex items-center justify-between"
         onClick={() => setExpanded((v) => !v)}
         whileTap={{ scale: 0.97 }}
       >
@@ -98,8 +98,8 @@ export function ShowerAnalytics({ logHistory, getAuthToken }: ShowerAnalyticsPro
 
       {/* Empty State */}
       {!stats ? (
-        <div className="brutal-card-sm bg-white rounded-xl p-6 text-center mt-4">
-          <p className="font-mono text-sm text-gray-500 uppercase tracking-wider">
+        <div className="brutal-card-sm bg-surface rounded-xl p-6 text-center mt-4">
+          <p className="font-mono text-sm text-muted uppercase tracking-wider">
             No shower data yet
           </p>
           <p className="text-3xl mt-2">📊</p>
@@ -119,7 +119,7 @@ export function ShowerAnalytics({ logHistory, getAuthToken }: ShowerAnalyticsPro
               {Object.entries(stats.avgDuration).map(([user, minutes]) => (
                 <div
                   key={user}
-                  className={`brutal-card-sm ${USER_COLORS[user] ?? "bg-white"} rounded-xl p-3`}
+                  className={`brutal-card-sm ${USER_COLORS[user] ?? "bg-surface"} rounded-xl p-3`}
                 >
                   <span className="font-display text-sm block">{user}</span>
                   <span className="font-mono text-2xl font-bold">
@@ -149,7 +149,7 @@ export function ShowerAnalytics({ logHistory, getAuthToken }: ShowerAnalyticsPro
                 return (
                   <div
                     key={user}
-                    className="brutal-card-sm bg-white rounded-xl p-3"
+                    className="brutal-card-sm bg-surface rounded-xl p-3"
                   >
                     <span className="font-display text-sm mb-2 block">
                       {user}
@@ -160,11 +160,11 @@ export function ShowerAnalytics({ logHistory, getAuthToken }: ShowerAnalyticsPro
                           key={hour}
                           className="flex items-center gap-2"
                         >
-                          <span className="font-mono text-xs w-12 text-gray-500">
+                          <span className="font-mono text-xs w-12 text-muted">
                             {formatHour(hour)}
                           </span>
                           <div
-                            className={`${USER_COLORS[user] ?? "bg-white"} h-4 rounded border-2 border-ink`}
+                            className={`${USER_COLORS[user] ?? "bg-surface"} h-4 rounded border-2 border-frame`}
                             style={{
                               width: `${(count / maxCount) * 100}%`,
                               minWidth: "8px",
@@ -191,14 +191,14 @@ export function ShowerAnalytics({ logHistory, getAuthToken }: ShowerAnalyticsPro
             <h3 className="font-mono text-xs font-bold uppercase tracking-wider mb-3">
               Day of Week
             </h3>
-            <div className="brutal-card-sm bg-white rounded-xl p-3">
+            <div className="brutal-card-sm bg-surface rounded-xl p-3">
               {/* Day headers */}
               <div className="grid grid-cols-8 gap-1 mb-2">
                 <div /> {/* empty for user name col */}
                 {["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map((d, i) => (
                   <span
                     key={i}
-                    className="font-mono text-xs text-center font-bold text-gray-400"
+                    className="font-mono text-xs text-center font-bold text-muted"
                   >
                     {d}
                   </span>
@@ -224,7 +224,7 @@ export function ShowerAnalytics({ logHistory, getAuthToken }: ShowerAnalyticsPro
                       return (
                         <div
                           key={dayIndex}
-                          className={`${USER_COLORS[user] ?? "bg-white"} h-6 rounded border border-ink`}
+                          className={`${USER_COLORS[user] ?? "bg-surface"} h-6 rounded border border-frame`}
                           style={{ opacity }}
                           title={`${count} showers`}
                         />
@@ -246,40 +246,40 @@ export function ShowerAnalytics({ logHistory, getAuthToken }: ShowerAnalyticsPro
               Leaderboard
             </h3>
             <div className="grid grid-cols-2 gap-2">
-              <div className="brutal-card-sm bg-white rounded-xl p-3 text-center">
+              <div className="brutal-card-sm bg-surface rounded-xl p-3 text-center">
                 <span className="text-2xl">🏆</span>
                 <span className="font-display text-sm block mt-1">
                   {stats.leaderboard.mostShowers.user}
                 </span>
-                <span className="font-mono text-xs text-gray-500">
+                <span className="font-mono text-xs text-muted">
                   Most showers ({stats.leaderboard.mostShowers.count})
                 </span>
               </div>
-              <div className="brutal-card-sm bg-white rounded-xl p-3 text-center">
+              <div className="brutal-card-sm bg-surface rounded-xl p-3 text-center">
                 <span className="text-2xl">⏱️</span>
                 <span className="font-display text-sm block mt-1">
                   {stats.leaderboard.longestAvg.user}
                 </span>
-                <span className="font-mono text-xs text-gray-500">
+                <span className="font-mono text-xs text-muted">
                   Longest avg ({stats.leaderboard.longestAvg.minutes}m)
                 </span>
               </div>
-              <div className="brutal-card-sm bg-white rounded-xl p-3 text-center">
+              <div className="brutal-card-sm bg-surface rounded-xl p-3 text-center">
                 <span className="text-2xl">🌅</span>
                 <span className="font-display text-sm block mt-1">
                   {stats.leaderboard.earlyBird.user}
                 </span>
-                <span className="font-mono text-xs text-gray-500">
+                <span className="font-mono text-xs text-muted">
                   Earliest (
                   {formatHour(Math.round(stats.leaderboard.earlyBird.avgHour))})
                 </span>
               </div>
-              <div className="brutal-card-sm bg-white rounded-xl p-3 text-center">
+              <div className="brutal-card-sm bg-surface rounded-xl p-3 text-center">
                 <span className="text-2xl">🌙</span>
                 <span className="font-display text-sm block mt-1">
                   {stats.leaderboard.nightOwl.user}
                 </span>
-                <span className="font-mono text-xs text-gray-500">
+                <span className="font-mono text-xs text-muted">
                   Latest (
                   {formatHour(Math.round(stats.leaderboard.nightOwl.avgHour))})
                 </span>
@@ -310,11 +310,11 @@ export function ShowerAnalytics({ logHistory, getAuthToken }: ShowerAnalyticsPro
             )}
 
             {aiInsights ? (
-              <div className="brutal-card-sm bg-white rounded-xl p-4">
+              <div className="brutal-card-sm bg-surface rounded-xl p-4">
                 <p className="font-mono text-sm whitespace-pre-wrap">{aiInsights}</p>
                 <div className="flex gap-2 mt-3">
                   <motion.button
-                    className="brutal-btn bg-white px-4 py-2 rounded-xl font-mono text-xs font-bold uppercase tracking-wider"
+                    className="brutal-btn bg-surface px-4 py-2 rounded-xl font-mono text-xs font-bold uppercase tracking-wider"
                     onClick={() => handleAskAI(false)}
                     whileTap={{ scale: 0.97 }}
                     disabled={aiLoading}

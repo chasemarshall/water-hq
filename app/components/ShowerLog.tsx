@@ -17,7 +17,7 @@ export function ShowerLog({ log }: { log: LogMap | null }) {
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-display text-xl uppercase">Shower Log</h2>
-        <div className="brutal-card-sm bg-white px-3 py-1 rounded-lg">
+        <div className="brutal-card-sm bg-surface px-3 py-1 rounded-lg">
           <span className="font-mono text-sm font-bold">
             last 24h
           </span>
@@ -29,12 +29,12 @@ export function ShowerLog({ log }: { log: LogMap | null }) {
           {entries.length === 0 ? (
             <motion.div
               key="empty-log"
-              className="brutal-card-sm bg-white rounded-xl p-6 text-center"
+              className="brutal-card-sm bg-surface rounded-xl p-6 text-center"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95 }}
             >
-              <p className="font-mono text-sm text-gray-500 uppercase tracking-wider">
+              <p className="font-mono text-sm text-muted uppercase tracking-wider">
                 No showers logged yet
               </p>
               <p className="text-3xl mt-2">{"\u{1F9FC}"}</p>
@@ -43,7 +43,7 @@ export function ShowerLog({ log }: { log: LogMap | null }) {
             entries.map(([id, entry], i) => (
               <motion.div
                 key={id}
-                className={`brutal-card-sm bg-white rounded-xl p-4 flex items-center gap-3`}
+                className={`brutal-card-sm bg-surface rounded-xl p-4 flex items-center gap-3`}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20, scale: 0.9 }}
@@ -51,7 +51,7 @@ export function ShowerLog({ log }: { log: LogMap | null }) {
                 layout
               >
                 <div
-                  className={`${userColor(entry.user)} w-10 h-10 rounded-lg border-2 border-ink flex items-center justify-center font-display text-sm shrink-0`}
+                  className={`${userColor(entry.user)} w-10 h-10 rounded-lg border-2 border-frame flex items-center justify-center font-display text-sm shrink-0`}
                 >
                   {entry.user.charAt(0)}
                 </div>
@@ -59,11 +59,11 @@ export function ShowerLog({ log }: { log: LogMap | null }) {
                   <span className="font-display text-sm block">
                     {entry.user}
                   </span>
-                  <span className="font-mono text-xs text-gray-500">
+                  <span className="font-mono text-xs text-muted">
                     {formatLogTime(entry.startedAt)} &mdash; {formatDuration(entry.durationSeconds)}
                   </span>
                 </div>
-                <div className="font-mono text-xs text-gray-400 shrink-0">
+                <div className="font-mono text-xs text-muted shrink-0">
                   {timeAgo(entry.endedAt)}
                 </div>
               </motion.div>

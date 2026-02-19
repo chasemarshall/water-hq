@@ -69,7 +69,7 @@ export function TimeSlots({
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-display text-xl uppercase">Upcoming Slots</h2>
-        <div className="brutal-card-sm bg-white px-3 py-1 rounded-lg">
+        <div className="brutal-card-sm bg-surface px-3 py-1 rounded-lg">
           <span className="font-mono text-sm font-bold">
             {totalCount} booked
           </span>
@@ -81,12 +81,12 @@ export function TimeSlots({
           {totalCount === 0 ? (
             <motion.div
               key="empty"
-              className="brutal-card-sm bg-white rounded-xl p-6 text-center"
+              className="brutal-card-sm bg-surface rounded-xl p-6 text-center"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95 }}
             >
-              <p className="font-mono text-sm text-gray-500 uppercase tracking-wider">
+              <p className="font-mono text-sm text-muted uppercase tracking-wider">
                 No slots claimed yet
               </p>
               <p className="text-3xl mt-2">{"\u{1FAE7}"}</p>
@@ -98,11 +98,11 @@ export function TimeSlots({
                 <div key={dateStr}>
                   {(
                     <div className="flex items-center gap-3 my-2">
-                      <div className="h-px bg-black/15 flex-1" />
-                      <span className="font-mono text-xs font-bold uppercase tracking-wider text-gray-500">
+                      <div className="h-px flex-1 border-t border-dashed border-muted" />
+                      <span className="font-mono text-xs font-bold uppercase tracking-wider text-muted">
                         {formatDateLabel(dateStr)}
                       </span>
-                      <div className="h-px bg-black/15 flex-1" />
+                      <div className="h-px flex-1 border-t border-dashed border-muted" />
                     </div>
                   )}
                   {dateSlots.map(([id, slot]) => {
@@ -122,12 +122,12 @@ export function TimeSlots({
                           <span className="font-display text-base block">
                             {slot.user}
                             {slot.recurring && (
-                              <span className="font-mono text-xs ml-2 bg-white/50 px-2 py-0.5 rounded-md">
+                              <span className="font-mono text-xs ml-2 px-2 py-0.5 rounded-md" style={{ backgroundColor: "color-mix(in srgb, var(--paper) 50%, transparent)" }}>
                                 daily
                               </span>
                             )}
                             {past && (
-                              <span className="font-mono text-xs ml-2 bg-black/10 px-2 py-0.5 rounded-md">
+                              <span className="font-mono text-xs ml-2 px-2 py-0.5 rounded-md" style={{ backgroundColor: "color-mix(in srgb, var(--frame) 30%, transparent)" }}>
                                 done
                               </span>
                             )}
@@ -138,7 +138,7 @@ export function TimeSlots({
                         </div>
                         {slot.user === currentUser && (
                           <motion.button
-                            className="brutal-btn bg-white w-9 h-9 flex items-center justify-center rounded-lg font-bold text-lg"
+                            className="brutal-btn bg-surface w-9 h-9 flex items-center justify-center rounded-lg font-bold text-lg"
                             onClick={() => handleDelete(id)}
                             whileTap={{ scale: 0.9 }}
                           >
@@ -156,7 +156,7 @@ export function TimeSlots({
       </div>
 
       <motion.button
-        className="brutal-btn bg-white w-full py-4 rounded-xl font-display text-lg uppercase tracking-wide"
+        className="brutal-btn bg-surface w-full py-4 rounded-xl font-display text-lg uppercase tracking-wide"
         onClick={onClaimClick}
         whileTap={{ scale: 0.97 }}
       >

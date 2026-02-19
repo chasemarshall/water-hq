@@ -73,7 +73,7 @@ export function LoginScreen({
       exit={{ opacity: 0 }}
     >
       <motion.div
-        className="brutal-card bg-white px-6 py-3 -rotate-2"
+        className="brutal-card bg-surface px-6 py-3 -rotate-2"
         initial={{ y: -40, opacity: 0, rotate: -8 }}
         animate={{ y: 0, opacity: 1, rotate: -2 }}
         transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
@@ -105,7 +105,7 @@ export function LoginScreen({
 
       {!verified ? (
         <motion.div
-          className="brutal-card bg-white rounded-2xl p-6 flex flex-col items-center gap-4"
+          className="brutal-card bg-surface rounded-2xl p-6 flex flex-col items-center gap-4"
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.45, type: "spring", stiffness: 200 }}
@@ -116,7 +116,7 @@ export function LoginScreen({
           <Turnstile
             sitekey="0x4AAAAAACe1VnSdqdE0AClL"
             onVerify={handleTurnstileSuccess}
-            theme="light"
+            theme="auto"
           />
           {verifying && (
             <p className="font-mono text-sm uppercase tracking-wider animate-pulse">
@@ -133,7 +133,7 @@ export function LoginScreen({
         <>
           <div className="w-full max-w-xs flex flex-col gap-3">
             <motion.button
-              className="brutal-btn bg-white w-full py-4 font-display text-xl rounded-xl flex items-center justify-center gap-3"
+              className="brutal-btn bg-surface w-full py-4 font-display text-xl rounded-xl flex items-center justify-center gap-3"
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: "spring", stiffness: 200 }}
@@ -185,7 +185,7 @@ export function LoginScreen({
                   onKeyDown={(e) => { if (e.key === "Enter") handleEmailSignIn(); }}
                 />
                 <motion.button
-                  className="brutal-btn bg-white w-full py-4 font-display text-xl rounded-xl flex items-center justify-center gap-3"
+                  className="brutal-btn bg-surface w-full py-4 font-display text-xl rounded-xl flex items-center justify-center gap-3"
                   initial={{ scale: 0.9, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ type: "spring", stiffness: 200 }}
@@ -208,7 +208,7 @@ export function LoginScreen({
               </motion.div>
             ) : (
               <motion.button
-                className="brutal-btn bg-white w-full py-4 font-display text-xl rounded-xl flex items-center justify-center gap-3"
+                className="brutal-btn bg-surface w-full py-4 font-display text-xl rounded-xl flex items-center justify-center gap-3"
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
@@ -241,7 +241,7 @@ export function LoginScreen({
         {["\u{1F6BF}", "\u{1F512}", "\u{1F4A7}", "\u{1F9FC}"].map((emoji, i) => (
           <span
             key={i}
-            className="brutal-card-sm bg-white w-10 h-10 flex items-center justify-center text-lg rounded-lg"
+            className="brutal-card-sm bg-surface w-10 h-10 flex items-center justify-center text-lg rounded-lg"
             style={{ transform: `rotate(${(i - 1.5) * 5}deg)` }}
           >
             {emoji}

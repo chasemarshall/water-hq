@@ -390,7 +390,7 @@ export default function Home() {
               transition={{ delay: 0.1 }}
             >
               <button
-                className="brutal-btn bg-white px-4 py-2 rounded-xl"
+                className="brutal-btn bg-surface px-4 py-2 rounded-xl"
                 onClick={handleSwitchUser}
               >
                 <span className="font-display text-sm">
@@ -460,7 +460,7 @@ export default function Home() {
             </motion.div>
 
             {/* Divider */}
-            <div className="border-t-3 border-ink border-dashed" />
+            <div className="border-t-3 border-frame border-dashed" />
 
             {/* Time slots */}
             <motion.div
@@ -478,7 +478,7 @@ export default function Home() {
             {/* Analytics (Chase only) */}
             {currentUser === "Chase" && (
               <>
-                <div className="border-t-3 border-ink border-dashed" />
+                <div className="border-t-3 border-frame border-dashed" />
                 <motion.div
                   initial={{ y: 20, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
@@ -496,7 +496,7 @@ export default function Home() {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.7 }}
             >
-              <p className="font-mono text-xs text-gray-400 uppercase tracking-widest">
+              <p className="font-mono text-xs text-muted uppercase tracking-widest">
                 One shower at a time
               </p>
             </motion.footer>
