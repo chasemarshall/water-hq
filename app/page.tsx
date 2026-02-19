@@ -254,6 +254,19 @@ export default function Home() {
       setLogHistory(snap.val());
     }, () => {});
 
+    // One-time backfill: copy existing log entries to logHistory if logHistory is empty
+    get(dbRef("logHistory")).then((historySnap) => {
+      if (!historySnap.exists()) {
+        get(dbRef("log")).then((logSnap) => {
+          if (logSnap.exists()) {
+            logSnap.forEach((child) => {
+              push(dbRef("logHistory"), child.val());
+            });
+          }
+        }).catch(() => {});
+      }
+    }).catch(() => {});
+
     // Cleanup old log entries (older than 24h)
     const cutoff24h = Date.now() - 24 * 60 * 60 * 1000;
     const oldLogQuery = query(
