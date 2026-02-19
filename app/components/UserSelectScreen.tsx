@@ -3,8 +3,18 @@
 import { motion } from "framer-motion";
 import { USERS, USER_COLORS } from "@/lib/constants";
 
-export function UserSelectScreen({ onSelect }: { onSelect: (name: string) => void }) {
-  const colors = USERS.map((name) => USER_COLORS[name] || "bg-white");
+export function UserSelectScreen({
+  onSelect,
+  authEmail,
+}: {
+  onSelect: (name: string) => void;
+  authEmail: string | null;
+}) {
+  const visibleUsers = USERS.filter((name) => {
+    if (name === "Chase") return authEmail === "chasemarshall.f@gmail.com";
+    return true;
+  });
+  const colors = visibleUsers.map((name) => USER_COLORS[name] || "bg-white");
 
   return (
     <motion.div
@@ -46,7 +56,7 @@ export function UserSelectScreen({ onSelect }: { onSelect: (name: string) => voi
       </motion.p>
 
       <div className="flex flex-col gap-4 w-full max-w-xs">
-        {USERS.map((name, i) => (
+        {visibleUsers.map((name, i) => (
           <motion.button
             key={name}
             className={`brutal-btn ${colors[i % colors.length]} px-8 py-5 font-display text-xl ${i === 3 ? "text-white" : "text-ink"} rounded-xl`}

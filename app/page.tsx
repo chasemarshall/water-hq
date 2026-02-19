@@ -329,7 +329,7 @@ export default function Home() {
     <main className="max-w-lg mx-auto relative">
       <AnimatePresence mode="wait">
         {!currentUser ? (
-          <UserSelectScreen key="select" onSelect={handleSelectUser} />
+          <UserSelectScreen key="select" onSelect={handleSelectUser} authEmail={authUser?.email ?? null} />
         ) : (
           <motion.div
             key="main"
