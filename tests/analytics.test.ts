@@ -54,7 +54,7 @@ describe("computeLeaderboard", () => {
     expect(result.nightOwl.user).toBe("Mom");
   });
 
-  it("treats early morning hours (before 5am) as night owl, not early bird", () => {
+  it("treats late night and early morning as night owl", () => {
     const lateNightLog: LogMap = {
       a: { user: "A.J.", startedAt: new Date("2026-02-17T02:00:00").getTime(), endedAt: new Date("2026-02-17T02:15:00").getTime(), durationSeconds: 900 },
       b: { user: "Chase", startedAt: new Date("2026-02-17T06:30:00").getTime(), endedAt: new Date("2026-02-17T06:45:00").getTime(), durationSeconds: 900 },
@@ -62,6 +62,16 @@ describe("computeLeaderboard", () => {
     const result = computeLeaderboard(lateNightLog);
     expect(result.earlyBird.user).toBe("Chase"); // 6:30am is early bird
     expect(result.nightOwl.user).toBe("A.J.");   // 2am is night owl, not early bird
+  });
+
+  it("treats 11pm as night owl, not early bird", () => {
+    const eveningLog: LogMap = {
+      a: { user: "Dad", startedAt: new Date("2026-02-17T23:00:00").getTime(), endedAt: new Date("2026-02-17T23:15:00").getTime(), durationSeconds: 900 },
+      b: { user: "Chase", startedAt: new Date("2026-02-17T07:00:00").getTime(), endedAt: new Date("2026-02-17T07:15:00").getTime(), durationSeconds: 900 },
+    };
+    const result = computeLeaderboard(eveningLog);
+    expect(result.earlyBird.user).toBe("Chase"); // 7am is early bird
+    expect(result.nightOwl.user).toBe("Dad");    // 11pm is night owl
   });
 
   it("handles empty log without crashing", () => {

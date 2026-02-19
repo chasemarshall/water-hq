@@ -66,8 +66,9 @@ export function computeLeaderboard(log: LogMap): {
     if (!hours[u]) hours[u] = { sum: 0, count: 0 };
     const d = new Date(entry.startedAt);
     const rawHour = d.getHours() + d.getMinutes() / 60;
-    // Treat midnight–5am as "late night" (shift +24) so 2am = 26, not 2
-    hours[u].sum += rawHour < 5 ? rawHour + 24 : rawHour;
+    // Map hours to a "day cycle" starting at 5am: 5am=0, noon=7, 11pm=18, 2am=21
+    // Lowest = early bird, highest = night owl
+    hours[u].sum += (rawHour - 5 + 24) % 24;
     hours[u].count += 1;
   }
 
@@ -92,7 +93,7 @@ export function computeLeaderboard(log: LogMap): {
   return {
     mostShowers: { user: mostShowers, count: counts[mostShowers] },
     longestAvg: { user: longestAvg, minutes: Math.round(durations[longestAvg].sum / durations[longestAvg].count / 60) },
-    earlyBird: { user: earlyBird, avgHour: Math.round(((hours[earlyBird].sum / hours[earlyBird].count) % 24) * 10) / 10 },
-    nightOwl: { user: nightOwl, avgHour: Math.round(((hours[nightOwl].sum / hours[nightOwl].count) % 24) * 10) / 10 },
+    earlyBird: { user: earlyBird, avgHour: Math.round(((hours[earlyBird].sum / hours[earlyBird].count + 5) % 24) * 10) / 10 },
+    nightOwl: { user: nightOwl, avgHour: Math.round(((hours[nightOwl].sum / hours[nightOwl].count + 5) % 24) * 10) / 10 },
   };
 }

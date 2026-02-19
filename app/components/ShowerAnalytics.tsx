@@ -90,11 +90,10 @@ export function ShowerAnalytics({ logHistory, getAuthToken }: ShowerAnalyticsPro
       {expanded && (
       <motion.div
         key="analytics-content"
-        initial={{ height: 0, opacity: 0 }}
-        animate={{ height: "auto", opacity: 1 }}
-        exit={{ height: 0, opacity: 0 }}
+        initial={{ height: 0, opacity: 0, overflow: "hidden" }}
+        animate={{ height: "auto", opacity: 1, overflow: "visible" }}
+        exit={{ height: 0, opacity: 0, overflow: "hidden" }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
-        style={{ overflow: "hidden" }}
       >
 
       {/* Empty State */}
