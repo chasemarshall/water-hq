@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { USER_COLORS } from "@/lib/constants";
 import {
@@ -24,14 +24,24 @@ interface ShowerAnalyticsProps {
 
 export function ShowerAnalytics({ logHistory, getAuthToken }: ShowerAnalyticsProps) {
   const [expanded, setExpanded] = useState(false);
-  const [aiInsights, setAiInsights] = useState<string | null>(null);
+  const [aiMessages, setAiMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [isSpicyMode, setIsSpicyMode] = useState(false);
+  const [followUpText, setFollowUpText] = useState("");
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+  };
 
   const handleAskAI = async (spicy = false) => {
     if (!logHistory) return;
     setAiLoading(true);
     setAiError(null);
+    setAiMessages([]);
+    setIsSpicyMode(spicy);
+    setFollowUpText("");
     try {
       const token = await getAuthToken();
       if (!token) throw new Error("Not authenticated");
@@ -46,9 +56,47 @@ export function ShowerAnalytics({ logHistory, getAuthToken }: ShowerAnalyticsPro
       });
       if (!res.ok) throw new Error("Failed to get insights");
       const data = await res.json();
-      setAiInsights(data.insights);
+      setAiMessages([{ role: "assistant", content: data.insights }]);
+      scrollToBottom();
     } catch {
       setAiError("Couldn't get AI insights. Try again.");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleFollowUp = async () => {
+    const text = followUpText.trim();
+    if (!text || !logHistory || aiLoading) return;
+    const newMessages = [...aiMessages, { role: "user" as const, content: text }];
+    setAiMessages(newMessages);
+    setFollowUpText("");
+    setAiLoading(true);
+    setAiError(null);
+    scrollToBottom();
+    try {
+      const token = await getAuthToken();
+      if (!token) throw new Error("Not authenticated");
+      const entries = Object.values(logHistory);
+      const res = await fetch("/api/analytics-insights", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          entries,
+          spicy: isSpicyMode,
+          followUpMessages: newMessages,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to get response");
+      const data = await res.json();
+      setAiMessages([...newMessages, { role: "assistant", content: data.insights }]);
+      scrollToBottom();
+    } catch {
+      setAiError("Couldn't get a response. Try again.");
+      setAiMessages(newMessages);
     } finally {
       setAiLoading(false);
     }
@@ -309,26 +357,79 @@ export function ShowerAnalytics({ logHistory, getAuthToken }: ShowerAnalyticsPro
               </div>
             )}
 
-            {aiInsights ? (
+            {aiMessages.length > 0 ? (
               <div className="brutal-card-sm bg-surface rounded-xl p-4">
-                <p className="font-mono text-sm whitespace-pre-wrap">{aiInsights}</p>
+                {/* Conversation thread */}
+                <div className="flex flex-col gap-3 max-h-80 overflow-y-auto">
+                  {aiMessages.map((msg, i) => (
+                    <div
+                      key={i}
+                      className={`${
+                        msg.role === "user"
+                          ? "ml-8 bg-lime text-[#1a1a1a] rounded-xl rounded-br-sm"
+                          : "mr-4 bg-paper rounded-xl rounded-bl-sm"
+                      } p-3`}
+                    >
+                      <p className="font-mono text-sm whitespace-pre-wrap">{msg.content}</p>
+                    </div>
+                  ))}
+                  {aiLoading && (
+                    <div className="mr-4 bg-paper rounded-xl rounded-bl-sm p-3">
+                      <span className="font-mono text-sm text-muted">Thinking...</span>
+                    </div>
+                  )}
+                  <div ref={chatEndRef} />
+                </div>
+
+                {/* Follow-up input */}
                 <div className="flex gap-2 mt-3">
+                  <input
+                    type="text"
+                    className="brutal-input flex-1 rounded-xl text-sm"
+                    placeholder={isSpicyMode ? "Ask something spicy..." : "Ask a follow-up..."}
+                    value={followUpText}
+                    onChange={(e) => setFollowUpText(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleFollowUp()}
+                    disabled={aiLoading}
+                  />
                   <motion.button
-                    className="brutal-btn bg-surface px-4 py-2 rounded-xl font-mono text-xs font-bold uppercase tracking-wider"
+                    className="brutal-btn bg-lime px-4 py-2 rounded-xl font-display text-sm uppercase"
+                    onClick={handleFollowUp}
+                    whileTap={{ scale: 0.97 }}
+                    disabled={aiLoading || !followUpText.trim()}
+                  >
+                    Send
+                  </motion.button>
+                </div>
+
+                {/* Mode controls */}
+                <div className="flex gap-2 mt-2">
+                  <motion.button
+                    className="brutal-btn bg-surface px-3 py-1 rounded-lg font-mono text-xs font-bold uppercase tracking-wider"
+                    onClick={() => {
+                      setAiMessages([]);
+                      setFollowUpText("");
+                    }}
+                    whileTap={{ scale: 0.97 }}
+                  >
+                    Clear
+                  </motion.button>
+                  <motion.button
+                    className="brutal-btn bg-surface px-3 py-1 rounded-lg font-mono text-xs font-bold uppercase tracking-wider"
                     onClick={() => handleAskAI(false)}
                     whileTap={{ scale: 0.97 }}
                     disabled={aiLoading}
                   >
-                    {aiLoading ? "Thinking..." : "Refresh"}
+                    New Normal
                   </motion.button>
                   <motion.button
-                    className="brutal-btn bg-coral px-3 py-2 rounded-xl text-lg"
+                    className="brutal-btn bg-coral px-3 py-1 rounded-lg text-sm"
                     onClick={() => handleAskAI(true)}
                     whileTap={{ scale: 0.95 }}
                     disabled={aiLoading}
-                    title="Spicy mode"
+                    title="New spicy analysis"
                   >
-                    💧
+                    💧 New
                   </motion.button>
                 </div>
               </div>

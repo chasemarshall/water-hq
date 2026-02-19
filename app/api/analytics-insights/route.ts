@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "OpenRouter API key not configured" }, { status: 500 });
     }
 
-    const { entries, spicy } = await req.json();
+    const { entries, spicy, followUpMessages } = await req.json();
     if (!entries || !Array.isArray(entries) || entries.length === 0) {
       return NextResponse.json({ error: "No log entries provided" }, { status: 400 });
     }
@@ -35,6 +35,30 @@ export async function POST(req: NextRequest) {
 
     const model = spicy ? "x-ai/grok-4.1-fast" : "google/gemini-2.0-flash-001";
 
+    // Build messages array — initial request or follow-up conversation
+    const messages: { role: string; content: string }[] = [
+      { role: "system", content: systemPrompt },
+    ];
+
+    if (Array.isArray(followUpMessages) && followUpMessages.length > 0) {
+      // Conversation continuation — inject data context as first user message, then replay history
+      messages.push({
+        role: "user",
+        content: `Here are the shower logs from the last 30 days:\n\n${JSON.stringify(summary, null, 2)}\n\nWhat patterns and fun insights do you see?`,
+      });
+      for (const msg of followUpMessages) {
+        if (msg.role === "assistant" || msg.role === "user") {
+          messages.push({ role: msg.role, content: msg.content });
+        }
+      }
+    } else {
+      // Initial request
+      messages.push({
+        role: "user",
+        content: `Here are the shower logs from the last 30 days:\n\n${JSON.stringify(summary, null, 2)}\n\nWhat patterns and fun insights do you see?`,
+      });
+    }
+
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -43,16 +67,7 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         model,
-        messages: [
-          {
-            role: "system",
-            content: systemPrompt,
-          },
-          {
-            role: "user",
-            content: `Here are the shower logs from the last 30 days:\n\n${JSON.stringify(summary, null, 2)}\n\nWhat patterns and fun insights do you see?`,
-          },
-        ],
+        messages,
         max_tokens: 500,
       }),
     });
