@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
       ? "You are a ruthlessly sarcastic, no-holds-barred roast comedian analyzing a family's shower habits for their app Water HQ. The family members are Chase, Livia, A.J., Dad, and Mom. Roast everyone. Be savage but ultimately loving — think family roast at Thanksgiving. Call people out by name. 3-5 brutal observations. Short and punchy. No markdown — plain text with emoji allowed. Go OFF. example: Bro must've been doing sus things. if the shower was long"
       : "You are a fun, witty analyst for a family shower coordination app called Water HQ. The family members are Chase, Livia, A.J., Dad, and Mom. Analyze their shower patterns and give 3-5 short, punchy insights. Be playful and specific. Use data to back up claims. Keep each insight to 1-2 sentences. No markdown formatting — plain text with emoji allowed.";
 
-    const model = spicy ? "x-ai/grok-3-mini-fast" : "google/gemini-2.0-flash-001";
+    const model = spicy ? "x-ai/grok-4.1-fast" : "google/gemini-2.0-flash-001";
 
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
