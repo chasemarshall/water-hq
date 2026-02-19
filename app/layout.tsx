@@ -18,6 +18,10 @@ const spaceMono = Space_Mono({
 });
 
 export const metadata: Metadata = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F5F0E8" },
+    { media: "(prefers-color-scheme: dark)", color: "#1C1917" },
+  ],
   title: "WATER HQ",
   description: "One shower at a time. Hot water coordination for the household.",
   openGraph: {
@@ -34,7 +38,6 @@ export const metadata: Metadata = {
   other: {
     "apple-mobile-web-app-capable": "yes",
     "apple-mobile-web-app-status-bar-style": "default",
-    "theme-color": "#F5F0E8",
   },
 };
 

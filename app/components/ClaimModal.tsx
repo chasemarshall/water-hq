@@ -171,7 +171,7 @@ export function ClaimModal({
                     <button
                       key={d}
                       className={`brutal-btn py-3 rounded-xl font-mono font-bold text-sm ${
-                        duration === d ? "bg-lime" : "bg-white"
+                        duration === d ? "bg-lime" : "bg-surface"
                       }`}
                       onClick={() => { setDuration(d); setOverlapError(false); }}
                     >
@@ -185,7 +185,7 @@ export function ClaimModal({
               <div>
                 <button
                   className={`brutal-btn w-full py-4 rounded-xl font-mono font-bold text-sm uppercase tracking-wider text-center ${
-                    recurring ? "bg-lime" : "bg-white"
+                    recurring ? "bg-lime" : "bg-surface"
                   }`}
                   onClick={() => setRecurring(!recurring)}
                 >
@@ -196,7 +196,7 @@ export function ClaimModal({
 
             <div className="flex gap-3 mt-6 pb-2">
               <button
-                className="brutal-btn bg-white flex-1 py-4 rounded-xl font-display text-base uppercase"
+                className="brutal-btn bg-surface flex-1 py-4 rounded-xl font-display text-base uppercase"
                 onClick={onClose}
               >
                 Cancel

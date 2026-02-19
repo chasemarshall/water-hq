@@ -122,9 +122,9 @@ export function ShowerButton({
 
   const btnClass = `brutal-btn py-6 rounded-2xl font-display text-2xl sm:text-3xl tracking-wide ${
     isMe
-      ? cooldown ? "bg-gray-300 text-ink" : "bg-coral text-white"
+      ? cooldown ? "bg-surface text-muted" : "bg-coral text-white"
       : isOccupied
-        ? "bg-gray-200 text-ink"
+        ? "bg-surface text-muted"
         : recentShower ? "bg-sky text-ink" : "bg-lime text-ink"
   }`;
 
