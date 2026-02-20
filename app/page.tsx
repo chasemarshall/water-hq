@@ -40,7 +40,6 @@ export default function Home() {
   const [loaded, setLoaded] = useState(false);
   const [notifPermission, setNotifPermission] = useState<NotificationPermission | "unsupported">("unsupported");
   const sentSlotNotificationsRef = useRef<Set<string>>(new Set());
-  const autoLoggedSlotsRef = useRef<Set<string>>(new Set());
 
   // Request notification permission (called from button tap on iOS, or auto on other browsers)
   const requestNotifPermission = useCallback(async () => {
@@ -174,29 +173,9 @@ export default function Home() {
           sentSlotNotificationsRef.current.add(othersStartKey);
         }
 
-        // Auto-log shower when slot ends (skip if already completed early)
-        const autoLogKey = `${slotId}:auto-log`;
-        const slotEndTs = slotStartTs + slot.durationMinutes * 60 * 1000;
-        if (
-          !slot.completed &&
-          now >= slotEndTs &&
-          now <= slotEndTs + 5 * 60 * 1000 &&
-          !autoLoggedSlotsRef.current.has(autoLogKey)
-        ) {
-          const entry = {
-            user: slot.user,
-            startedAt: slotStartTs,
-            endedAt: slotEndTs,
-            durationSeconds: slot.durationMinutes * 60,
-          };
-          push(dbRef("log"), entry);
-          push(dbRef("logHistory"), entry);
-          autoLoggedSlotsRef.current.add(autoLogKey);
-        }
       }
 
       const validKeys = new Set<string>();
-      const validAutoLogKeys = new Set<string>();
       for (const [slotId, slot] of Object.entries(slots)) {
         const slotStartTs = getEffectiveSlotStartTimestamp(slot);
         if (slotStartTs >= now - 5 * 60 * 1000) {
@@ -205,16 +184,9 @@ export default function Home() {
           validKeys.add(getSlotAlertKey(slotId, "others-ten"));
           validKeys.add(getSlotAlertKey(slotId, "others-start"));
         }
-        const slotEndTs = slotStartTs + slot.durationMinutes * 60 * 1000;
-        if (slotEndTs >= now - 5 * 60 * 1000) {
-          validAutoLogKeys.add(`${slotId}:auto-log`);
-        }
       }
       sentSlotNotificationsRef.current = new Set(
         [...sentSlotNotificationsRef.current].filter((key) => validKeys.has(key)),
-      );
-      autoLoggedSlotsRef.current = new Set(
-        [...autoLoggedSlotsRef.current].filter((key) => validAutoLogKeys.has(key)),
       );
     };
 
