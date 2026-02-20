@@ -3,7 +3,11 @@ import {
   computePeakHours,
   computeAvgDuration,
   computeDayOfWeekFrequency,
-  computeLeaderboard,
+  computeStreaks,
+  computeShowerCounts,
+  computeLongestShower,
+  computeConsistency,
+  computeWaterUsage,
 } from "@/lib/analytics";
 import type { LogMap } from "@/lib/types";
 
@@ -44,42 +48,89 @@ describe("computeDayOfWeekFrequency", () => {
   });
 });
 
-describe("computeLeaderboard", () => {
-  it("returns leaderboard stats", () => {
-    const result = computeLeaderboard(mockLog);
-    expect(result.mostShowers.user).toBe("Chase");
-    expect(result.mostShowers.count).toBe(2);
-    expect(result.longestAvg.user).toBe("Mom");
-    expect(result.earlyBird.user).toBe("Chase");
-    expect(result.nightOwl.user).toBe("Mom");
+describe("computeShowerCounts", () => {
+  it("returns total shower count per user", () => {
+    const result = computeShowerCounts(mockLog);
+    expect(result["Chase"]).toBe(2);
+    expect(result["Mom"]).toBe(2);
+    expect(result["A.J."]).toBe(1);
   });
 
-  it("treats late night and early morning as night owl", () => {
-    const lateNightLog: LogMap = {
-      a: { user: "A.J.", startedAt: new Date("2026-02-17T02:00:00").getTime(), endedAt: new Date("2026-02-17T02:15:00").getTime(), durationSeconds: 900 },
-      b: { user: "Chase", startedAt: new Date("2026-02-17T06:30:00").getTime(), endedAt: new Date("2026-02-17T06:45:00").getTime(), durationSeconds: 900 },
+  it("handles empty log", () => {
+    expect(computeShowerCounts({})).toEqual({});
+  });
+});
+
+describe("computeStreaks", () => {
+  it("returns 0 for users with no showers today", () => {
+    // mockLog has showers on Feb 16-17, not today
+    const result = computeStreaks(mockLog);
+    expect(result["Chase"]).toBe(0);
+    expect(result["Mom"]).toBe(0);
+  });
+
+  it("counts consecutive days backwards from today", () => {
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const log: LogMap = {
+      a: { user: "Chase", startedAt: today.getTime(), endedAt: today.getTime() + 600000, durationSeconds: 600 },
+      b: { user: "Chase", startedAt: yesterday.getTime(), endedAt: yesterday.getTime() + 600000, durationSeconds: 600 },
     };
-    const result = computeLeaderboard(lateNightLog);
-    expect(result.earlyBird.user).toBe("Chase"); // 6:30am is early bird
-    expect(result.nightOwl.user).toBe("A.J.");   // 2am is night owl, not early bird
+    const result = computeStreaks(log);
+    expect(result["Chase"]).toBe(2);
   });
 
-  it("treats 11pm as night owl, not early bird", () => {
-    const eveningLog: LogMap = {
-      a: { user: "Dad", startedAt: new Date("2026-02-17T23:00:00").getTime(), endedAt: new Date("2026-02-17T23:15:00").getTime(), durationSeconds: 900 },
-      b: { user: "Chase", startedAt: new Date("2026-02-17T07:00:00").getTime(), endedAt: new Date("2026-02-17T07:15:00").getTime(), durationSeconds: 900 },
+  it("handles empty log", () => {
+    expect(computeStreaks({})).toEqual({});
+  });
+});
+
+describe("computeLongestShower", () => {
+  it("returns the longest single shower", () => {
+    const result = computeLongestShower(mockLog);
+    expect(result).not.toBeNull();
+    expect(result!.user).toBe("Mom");
+    expect(result!.durationMinutes).toBe(20);
+  });
+
+  it("returns null for empty log", () => {
+    expect(computeLongestShower({})).toBeNull();
+  });
+});
+
+describe("computeConsistency", () => {
+  it("returns user with lowest duration variance (min 3 showers)", () => {
+    const log: LogMap = {
+      a: { user: "Chase", startedAt: 1000, endedAt: 2000, durationSeconds: 600 },
+      b: { user: "Chase", startedAt: 2000, endedAt: 3000, durationSeconds: 610 },
+      c: { user: "Chase", startedAt: 3000, endedAt: 4000, durationSeconds: 605 },
+      d: { user: "Mom", startedAt: 1000, endedAt: 2000, durationSeconds: 300 },
+      e: { user: "Mom", startedAt: 2000, endedAt: 3000, durationSeconds: 900 },
+      f: { user: "Mom", startedAt: 3000, endedAt: 4000, durationSeconds: 1500 },
     };
-    const result = computeLeaderboard(eveningLog);
-    expect(result.earlyBird.user).toBe("Chase"); // 7am is early bird
-    expect(result.nightOwl.user).toBe("Dad");    // 11pm is night owl
+    const result = computeConsistency(log);
+    expect(result).not.toBeNull();
+    expect(result!.user).toBe("Chase"); // Chase's times are very close together
   });
 
-  it("handles empty log without crashing", () => {
-    const result = computeLeaderboard({});
-    expect(result.mostShowers.user).toBe("-");
-    expect(result.mostShowers.count).toBe(0);
-    expect(result.longestAvg.minutes).toBe(0);
-    expect(result.earlyBird.avgHour).toBe(0);
-    expect(result.nightOwl.avgHour).toBe(0);
+  it("returns null when no user has 3+ showers", () => {
+    expect(computeConsistency(mockLog)).toBeNull(); // Chase has 2, Mom has 2, A.J. has 1
+  });
+
+  it("returns null for empty log", () => {
+    expect(computeConsistency({})).toBeNull();
+  });
+});
+
+describe("computeWaterUsage", () => {
+  it("estimates total gallons at 2 gal/min", () => {
+    // mockLog total: 900+900+1200+600+1200 = 4800 seconds = 80 minutes = 160 gallons
+    const result = computeWaterUsage(mockLog);
+    expect(result).toBe(160);
+  });
+
+  it("returns 0 for empty log", () => {
+    expect(computeWaterUsage({})).toBe(0);
   });
 });

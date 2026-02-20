@@ -37,63 +37,83 @@ export function computeDayOfWeekFrequency(log: LogMap): Record<string, Record<nu
   return result;
 }
 
-/** Fun leaderboard stats */
-export function computeLeaderboard(log: LogMap): {
-  mostShowers: { user: string; count: number };
-  longestAvg: { user: string; minutes: number };
-  earlyBird: { user: string; avgHour: number };
-  nightOwl: { user: string; avgHour: number };
-} {
-  if (Object.keys(log).length === 0) {
-    return {
-      mostShowers: { user: "-", count: 0 },
-      longestAvg: { user: "-", minutes: 0 },
-      earlyBird: { user: "-", avgHour: 0 },
-      nightOwl: { user: "-", avgHour: 0 },
-    };
-  }
-
-  const counts: Record<string, number> = {};
-  const durations: Record<string, { sum: number; count: number }> = {};
-  const hours: Record<string, { sum: number; count: number }> = {};
-
+/** Current consecutive-day shower streak per user */
+export function computeStreaks(log: LogMap): Record<string, number> {
+  const showerDays: Record<string, Set<string>> = {};
   for (const entry of Object.values(log)) {
-    const u = entry.user;
-    counts[u] = (counts[u] || 0) + 1;
-    if (!durations[u]) durations[u] = { sum: 0, count: 0 };
-    durations[u].sum += entry.durationSeconds;
-    durations[u].count += 1;
-    if (!hours[u]) hours[u] = { sum: 0, count: 0 };
+    if (!showerDays[entry.user]) showerDays[entry.user] = new Set();
     const d = new Date(entry.startedAt);
-    const rawHour = d.getHours() + d.getMinutes() / 60;
-    // Map hours to a "day cycle" starting at 5am: 5am=0, noon=7, 11pm=18, 2am=21
-    // Lowest = early bird, highest = night owl
-    hours[u].sum += (rawHour - 5 + 24) % 24;
-    hours[u].count += 1;
+    showerDays[entry.user].add(
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+    );
   }
 
-  const users = Object.keys(counts);
-  const mostShowers = users.reduce((best, u) => counts[u] > counts[best] ? u : best, users[0]);
-  const longestAvg = users.reduce((best, u) => {
-    const avg = durations[u].sum / durations[u].count;
-    const bestAvg = durations[best].sum / durations[best].count;
-    return avg > bestAvg ? u : best;
-  }, users[0]);
-  const earlyBird = users.reduce((best, u) => {
-    const avg = hours[u].sum / hours[u].count;
-    const bestAvg = hours[best].sum / hours[best].count;
-    return avg < bestAvg ? u : best;
-  }, users[0]);
-  const nightOwl = users.reduce((best, u) => {
-    const avg = hours[u].sum / hours[u].count;
-    const bestAvg = hours[best].sum / hours[best].count;
-    return avg > bestAvg ? u : best;
-  }, users[0]);
+  const result: Record<string, number> = {};
+  for (const [user, days] of Object.entries(showerDays)) {
+    let streak = 0;
+    const d = new Date();
+    // Start from today, walk backwards
+    while (true) {
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      if (days.has(key)) {
+        streak++;
+        d.setDate(d.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+    result[user] = streak;
+  }
+  return result;
+}
 
-  return {
-    mostShowers: { user: mostShowers, count: counts[mostShowers] },
-    longestAvg: { user: longestAvg, minutes: Math.round(durations[longestAvg].sum / durations[longestAvg].count / 60) },
-    earlyBird: { user: earlyBird, avgHour: Math.round(((hours[earlyBird].sum / hours[earlyBird].count + 5) % 24) * 10) / 10 },
-    nightOwl: { user: nightOwl, avgHour: Math.round(((hours[nightOwl].sum / hours[nightOwl].count + 5) % 24) * 10) / 10 },
-  };
+/** Total shower count per user */
+export function computeShowerCounts(log: LogMap): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const entry of Object.values(log)) {
+    counts[entry.user] = (counts[entry.user] || 0) + 1;
+  }
+  return counts;
+}
+
+/** Longest single shower across all users */
+export function computeLongestShower(log: LogMap): { user: string; durationMinutes: number } | null {
+  if (Object.keys(log).length === 0) return null;
+  let best: { user: string; durationSeconds: number } | null = null;
+  for (const entry of Object.values(log)) {
+    if (!best || entry.durationSeconds > best.durationSeconds) {
+      best = { user: entry.user, durationSeconds: entry.durationSeconds };
+    }
+  }
+  return best ? { user: best.user, durationMinutes: Math.round(best.durationSeconds / 60) } : null;
+}
+
+/** User with lowest standard deviation in shower duration (min 3 showers) */
+export function computeConsistency(log: LogMap): { user: string; deviationMinutes: number } | null {
+  const durations: Record<string, number[]> = {};
+  for (const entry of Object.values(log)) {
+    if (!durations[entry.user]) durations[entry.user] = [];
+    durations[entry.user].push(entry.durationSeconds);
+  }
+
+  let best: { user: string; stdDev: number } | null = null;
+  for (const [user, times] of Object.entries(durations)) {
+    if (times.length < 3) continue;
+    const mean = times.reduce((a, b) => a + b, 0) / times.length;
+    const variance = times.reduce((sum, t) => sum + (t - mean) ** 2, 0) / times.length;
+    const stdDev = Math.sqrt(variance);
+    if (!best || stdDev < best.stdDev) {
+      best = { user, stdDev };
+    }
+  }
+  return best ? { user: best.user, deviationMinutes: Math.round(best.stdDev / 60) } : null;
+}
+
+/** Estimated total water usage in gallons (2 gal/min) */
+export function computeWaterUsage(log: LogMap): number {
+  let totalSeconds = 0;
+  for (const entry of Object.values(log)) {
+    totalSeconds += entry.durationSeconds;
+  }
+  return Math.round(totalSeconds / 60 * 2);
 }

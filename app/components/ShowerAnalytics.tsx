@@ -7,7 +7,11 @@ import {
   computePeakHours,
   computeAvgDuration,
   computeDayOfWeekFrequency,
-  computeLeaderboard,
+  computeStreaks,
+  computeShowerCounts,
+  computeLongestShower,
+  computeConsistency,
+  computeWaterUsage,
 } from "@/lib/analytics";
 import type { LogMap } from "@/lib/types";
 
@@ -103,11 +107,27 @@ export function ShowerAnalytics({ logHistory, getAuthToken }: ShowerAnalyticsPro
   };
   const stats = useMemo(() => {
     if (!logHistory || Object.keys(logHistory).length === 0) return null;
+    const showerCounts = computeShowerCounts(logHistory);
+    const streaks = computeStreaks(logHistory);
+    // Find user with highest streak
+    const streakEntries = Object.entries(streaks);
+    const topStreak = streakEntries.length > 0
+      ? streakEntries.reduce((best, curr) => curr[1] > best[1] ? curr : best)
+      : null;
+    // Find user with most showers
+    const countEntries = Object.entries(showerCounts);
+    const topCount = countEntries.length > 0
+      ? countEntries.reduce((best, curr) => curr[1] > best[1] ? curr : best)
+      : null;
     return {
       peakHours: computePeakHours(logHistory),
       avgDuration: computeAvgDuration(logHistory),
       dayFreq: computeDayOfWeekFrequency(logHistory),
-      leaderboard: computeLeaderboard(logHistory),
+      topStreak: topStreak ? { user: topStreak[0], days: topStreak[1] } : null,
+      topCount: topCount ? { user: topCount[0], count: topCount[1] } : null,
+      longestShower: computeLongestShower(logHistory),
+      consistency: computeConsistency(logHistory),
+      waterUsage: computeWaterUsage(logHistory),
     };
   }, [logHistory]);
 
@@ -154,11 +174,70 @@ export function ShowerAnalytics({ logHistory, getAuthToken }: ShowerAnalyticsPro
         </div>
       ) : (
         <div className="flex flex-col gap-6 mt-4">
-          {/* Avg Duration Cards */}
+          {/* Leaderboard */}
           <motion.div
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.1 }}
+          >
+            <h3 className="font-mono text-xs font-bold uppercase tracking-wider mb-3">
+              Leaderboard
+            </h3>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="brutal-card-sm bg-surface rounded-xl p-3 text-center">
+                <span className="text-2xl block">&#x1F525;</span>
+                <span className="font-display text-sm block mt-1">
+                  {stats.topStreak?.user ?? "-"}
+                </span>
+                <span className="font-mono text-xs text-muted">
+                  Streak ({stats.topStreak?.days ?? 0} {stats.topStreak?.days === 1 ? "day" : "days"})
+                </span>
+              </div>
+              <div className="brutal-card-sm bg-surface rounded-xl p-3 text-center">
+                <span className="text-2xl block">&#x1F3C6;</span>
+                <span className="font-display text-sm block mt-1">
+                  {stats.topCount?.user ?? "-"}
+                </span>
+                <span className="font-mono text-xs text-muted">
+                  Most showers ({stats.topCount?.count ?? 0})
+                </span>
+              </div>
+              <div className="brutal-card-sm bg-surface rounded-xl p-3 text-center">
+                <span className="text-2xl block">&#x23F1;&#xFE0F;</span>
+                <span className="font-display text-sm block mt-1">
+                  {stats.longestShower?.user ?? "-"}
+                </span>
+                <span className="font-mono text-xs text-muted">
+                  Marathon ({stats.longestShower?.durationMinutes ?? 0}m)
+                </span>
+              </div>
+              <div className="brutal-card-sm bg-surface rounded-xl p-3 text-center">
+                <span className="text-2xl block">&#x1F3AF;</span>
+                <span className="font-display text-sm block mt-1">
+                  {stats.consistency?.user ?? "-"}
+                </span>
+                <span className="font-mono text-xs text-muted">
+                  {stats.consistency ? `Consistent (±${stats.consistency.deviationMinutes}m)` : "Consistent (-)"}
+                </span>
+              </div>
+            </div>
+            {/* Water usage — full width */}
+            <div className="brutal-card-sm bg-surface rounded-xl p-4 mt-2 text-center">
+              <span className="text-2xl block">&#x1F4A7;</span>
+              <span className="font-display text-2xl block mt-1">
+                ~{stats.waterUsage.toLocaleString()} gal
+              </span>
+              <span className="font-mono text-xs text-muted">
+                Est. family water usage (30d)
+              </span>
+            </div>
+          </motion.div>
+
+          {/* Avg Duration Cards */}
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.2 }}
           >
             <h3 className="font-mono text-xs font-bold uppercase tracking-wider mb-3">
               Avg Duration
@@ -182,7 +261,7 @@ export function ShowerAnalytics({ logHistory, getAuthToken }: ShowerAnalyticsPro
           <motion.div
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.2 }}
+            transition={{ delay: 0.3 }}
           >
             <h3 className="font-mono text-xs font-bold uppercase tracking-wider mb-3">
               Peak Hours
@@ -234,7 +313,7 @@ export function ShowerAnalytics({ logHistory, getAuthToken }: ShowerAnalyticsPro
           <motion.div
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.3 }}
+            transition={{ delay: 0.4 }}
           >
             <h3 className="font-mono text-xs font-bold uppercase tracking-wider mb-3">
               Day of Week
@@ -281,57 +360,6 @@ export function ShowerAnalytics({ logHistory, getAuthToken }: ShowerAnalyticsPro
                   </div>
                 ));
               })()}
-            </div>
-          </motion.div>
-
-          {/* Leaderboard */}
-          <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.4 }}
-          >
-            <h3 className="font-mono text-xs font-bold uppercase tracking-wider mb-3">
-              Leaderboard
-            </h3>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="brutal-card-sm bg-surface rounded-xl p-3 text-center">
-                <span className="text-2xl">🏆</span>
-                <span className="font-display text-sm block mt-1">
-                  {stats.leaderboard.mostShowers.user}
-                </span>
-                <span className="font-mono text-xs text-muted">
-                  Most showers ({stats.leaderboard.mostShowers.count})
-                </span>
-              </div>
-              <div className="brutal-card-sm bg-surface rounded-xl p-3 text-center">
-                <span className="text-2xl">⏱️</span>
-                <span className="font-display text-sm block mt-1">
-                  {stats.leaderboard.longestAvg.user}
-                </span>
-                <span className="font-mono text-xs text-muted">
-                  Longest avg ({stats.leaderboard.longestAvg.minutes}m)
-                </span>
-              </div>
-              <div className="brutal-card-sm bg-surface rounded-xl p-3 text-center">
-                <span className="text-2xl">🌅</span>
-                <span className="font-display text-sm block mt-1">
-                  {stats.leaderboard.earlyBird.user}
-                </span>
-                <span className="font-mono text-xs text-muted">
-                  Earliest (
-                  {formatHour(Math.round(stats.leaderboard.earlyBird.avgHour))})
-                </span>
-              </div>
-              <div className="brutal-card-sm bg-surface rounded-xl p-3 text-center">
-                <span className="text-2xl">🌙</span>
-                <span className="font-display text-sm block mt-1">
-                  {stats.leaderboard.nightOwl.user}
-                </span>
-                <span className="font-mono text-xs text-muted">
-                  Latest (
-                  {formatHour(Math.round(stats.leaderboard.nightOwl.avgHour))})
-                </span>
-              </div>
             </div>
           </motion.div>
 
