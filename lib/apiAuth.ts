@@ -1,6 +1,6 @@
 import { DecodedIdToken, getAuth } from "firebase-admin/auth";
 import { NextRequest, NextResponse } from "next/server";
-import { adminDb, adminPath } from "@/lib/firebaseAdmin";
+import { adminDb } from "@/lib/firebaseAdmin";
 
 type AuthResult =
   | { ok: true; token: DecodedIdToken }
@@ -53,7 +53,7 @@ async function isAllowlistedEmail(email: string): Promise<boolean> {
     const now = Date.now();
     const cached = allowlistCache.get("allowedEmails");
     if (!cached || now >= cached.expiresAt) {
-      const snap = await adminDb.ref(adminPath("allowedEmails")).once("value");
+      const snap = await adminDb.ref("allowedEmails").once("value");
       if (!snap.exists()) {
         return false;
       }
