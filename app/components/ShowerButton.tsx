@@ -87,7 +87,7 @@ export function ShowerButton({
         if (!isSlotForToday(slot)) continue;
         const slotStartMs = getEffectiveSlotStartTimestamp(slot);
         const diffMin = (slotStartMs - now) / 60000;
-        if (diffMin > 0 && diffMin <= 5) {
+        if (diffMin > 0 && diffMin <= 15) {
           alert(
             `Heads up: ${slot.user} has a slot at ${slot.startTime}. Starting anyway.`
           );
