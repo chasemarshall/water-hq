@@ -62,7 +62,15 @@ export function ClaimModal({
 
     if (slots) {
       const overlap = Object.values(slots).some((slot) => {
-        const couldOverlap = slot.date === date || slot.recurring || recurring;
+        // Both recurring, or both on same date — always check overlap
+        // One recurring + one specific — only overlap if the specific date matches today
+        // (recurring slots repeat daily, so they only conflict with today's one-time slots)
+        const bothRecurring = slot.recurring && recurring;
+        const sameDate = slot.date === date;
+        const recurringVsToday =
+          (slot.recurring && !recurring && date === getToday()) ||
+          (!slot.recurring && recurring && slot.date === getToday());
+        const couldOverlap = sameDate || bothRecurring || recurringVsToday;
         if (!couldOverlap) return false;
         const [sh, sm] = slot.startTime.split(":").map(Number);
         const sStart = sh * 60 + sm;

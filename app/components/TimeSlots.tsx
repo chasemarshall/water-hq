@@ -22,7 +22,11 @@ export function TimeSlots({
   const allUpcoming = slots
     ? Object.entries(slots)
         .filter(([, s]) => s.date >= today || s.recurring)
-        .sort(([, a], [, b]) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime))
+        .sort(([, a], [, b]) => {
+          const aDate = a.recurring ? today : a.date;
+          const bDate = b.recurring ? today : b.date;
+          return aDate.localeCompare(bDate) || a.startTime.localeCompare(b.startTime);
+        })
     : [];
 
   const isSlotPast = (slot: Slot) => {
