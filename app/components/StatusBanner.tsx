@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { set } from "firebase/database";
 import { dbRef } from "@/lib/firebase";
 import { AUTO_RELEASE_SECONDS } from "@/lib/constants";
-import { formatElapsed, formatTimeRange, timeAgo, isSlotForToday, getEffectiveSlotStartTimestamp } from "@/lib/utils";
+import { formatElapsed, formatTimeRange, timeAgo, isSlotForToday, getEffectiveSlotStartTimestamp, getRecentShower } from "@/lib/utils";
 import { sendPushNotification } from "@/lib/notifications";
 import type { ShowerStatus, LogMap, SlotsMap } from "@/lib/types";
 
@@ -29,9 +29,7 @@ export function StatusBanner({
   const isOccupied = status?.currentUser != null;
   const isMe = status?.currentUser === currentUser;
 
-  const recentShower = !isOccupied && log
-    ? Object.values(log).find((entry) => Date.now() - entry.endedAt < 30 * 60 * 1000)
-    : null;
+  const recentShower = !isOccupied ? getRecentShower(log) : null;
 
   // Find if someone has a slot happening right now
   const activeSlotNow = (() => {

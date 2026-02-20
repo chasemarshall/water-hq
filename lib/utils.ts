@@ -1,5 +1,5 @@
 import { USER_COLORS } from "./constants";
-import type { Slot } from "./types";
+import type { Slot, LogEntry, LogMap } from "./types";
 
 export function getToday(): string {
   const d = new Date();
@@ -74,4 +74,17 @@ export function getEffectiveSlotStartTimestamp(slot: Slot): number {
 
 export function getSlotAlertKey(slotId: string, alertType: "owner-ten" | "owner-start" | "others-ten" | "others-start"): string {
   return `${slotId}:${alertType}`;
+}
+
+/** Return the most recent shower within the last 30 minutes, by maximum endedAt. */
+export function getRecentShower(log: LogMap | null): LogEntry | null {
+  if (!log) return null;
+  const cutoff = Date.now() - 30 * 60 * 1000;
+  let latest: LogEntry | null = null;
+  for (const entry of Object.values(log)) {
+    if (entry.endedAt > cutoff && (!latest || entry.endedAt > latest.endedAt)) {
+      latest = entry;
+    }
+  }
+  return latest;
 }

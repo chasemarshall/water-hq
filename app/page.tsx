@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { dbRef } from "@/lib/firebase";
 import { useAuth } from "@/lib/useAuth";
-import { onValue, push, remove, query, orderByChild, endAt, get } from "firebase/database";
+import { onValue, push, get } from "firebase/database";
 
 import { TEN_MINUTES_MS, SLOT_ALERT_WINDOW_MS } from "@/lib/constants";
 import { getToday, formatTimeRange, getEffectiveSlotStartTimestamp, getSlotAlertKey } from "@/lib/utils";
@@ -239,51 +239,8 @@ export default function Home() {
       }
     }).catch(() => {});
 
-    // Cleanup old log entries (older than 24h)
-    const cutoff24h = Date.now() - 24 * 60 * 60 * 1000;
-    const oldLogQuery = query(
-      dbRef("log"),
-      orderByChild("endedAt"),
-      endAt(cutoff24h)
-    );
-    get(oldLogQuery).then((snap) => {
-      snap.forEach((child) => {
-        remove(child.ref);
-      });
-    }).catch(() => {
-      // Ignore cleanup failures.
-    });
-
-    // Cleanup old logHistory entries (older than 30 days)
-    const cutoff30d = Date.now() - 30 * 24 * 60 * 60 * 1000;
-    const oldHistoryQuery = query(
-      dbRef("logHistory"),
-      orderByChild("endedAt"),
-      endAt(cutoff30d)
-    );
-    get(oldHistoryQuery).then((snap) => {
-      snap.forEach((child) => {
-        remove(child.ref);
-      });
-    }).catch(() => {});
-
-    // Cleanup old slots
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
-    const oldSlotsQuery = query(
-      dbRef("slots"),
-      orderByChild("date"),
-      endAt(yesterdayStr)
-    );
-    get(oldSlotsQuery).then((snap) => {
-      snap.forEach((child) => {
-        // Never delete recurring slots — they apply every day regardless of original date
-        if (!child.val()?.recurring) remove(child.ref);
-      });
-    }).catch(() => {
-      // Ignore cleanup failures (e.g. Safari private mode).
-    });
+    // Server-side cleanup of old logs, history, and slots (fire-and-forget)
+    fetch("/api/cleanup", { method: "POST" }).catch(() => {});
 
     return () => {
       unsubStatus();

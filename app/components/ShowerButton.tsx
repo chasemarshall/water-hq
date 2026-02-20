@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { set } from "firebase/database";
 import { dbRef } from "@/lib/firebase";
 import { MIN_SHOWER_SECONDS } from "@/lib/constants";
-import { isSlotForToday, getEffectiveSlotStartTimestamp } from "@/lib/utils";
+import { isSlotForToday, getEffectiveSlotStartTimestamp, getRecentShower } from "@/lib/utils";
 import { sendPushNotification } from "@/lib/notifications";
 import type { ShowerStatus, SlotsMap, LogMap } from "@/lib/types";
 
@@ -26,9 +26,7 @@ export function ShowerButton({
   const isMe = status?.currentUser === currentUser;
   const canAct = !isOccupied || isMe;
   const [cooldown, setCooldown] = useState(false);
-  const recentShower = !isOccupied && log
-    ? Object.values(log).find((entry) => Date.now() - entry.endedAt < 30 * 60 * 1000)
-    : null;
+  const recentShower = !isOccupied ? getRecentShower(log) : null;
 
   // Enforce minimum shower duration before allowing stop
   useEffect(() => {
