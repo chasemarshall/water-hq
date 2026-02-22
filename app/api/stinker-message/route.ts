@@ -45,20 +45,24 @@ export async function POST(req: NextRequest) {
     }
 
     const data = await response.json();
-    const text = data.choices?.[0]?.message?.content ?? "";
+    const raw = (data.choices?.[0]?.message?.content ?? "").trim();
+
+    // Strip markdown code fences if present
+    const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
 
     try {
-      const parsed = JSON.parse(text);
+      const parsed = JSON.parse(cleaned);
       return NextResponse.json({
         emoji: parsed.emoji ?? "🦨",
         title: parsed.title ?? "SERIOUSLY?!",
         body: parsed.body ?? "Go shower already.",
       });
     } catch {
+      // If JSON parsing fails entirely, treat the raw text as the body
       return NextResponse.json({
         emoji: "🦨",
         title: "SERIOUSLY?!",
-        body: text.slice(0, 120) || "Go shower already.",
+        body: raw.replace(/[{}"\n]/g, "").slice(0, 120) || "Go shower already.",
       });
     }
   } catch (err) {
