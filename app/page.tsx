@@ -21,6 +21,7 @@ import { ClaimModal } from "./components/ClaimModal";
 import { TickerBar } from "./components/TickerBar";
 import { LoginScreen } from "./components/LoginScreen";
 import { ShowerAnalytics } from "./components/ShowerAnalytics";
+import { StinkerPopup } from "./components/StinkerPopup";
 
 export default function Home() {
   const {
@@ -432,6 +433,11 @@ export default function Home() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Stinker Popup */}
+      {currentUser && (
+        <StinkerPopup log={log} logHistory={logHistory} currentUser={currentUser} />
+      )}
 
       {/* Claim Modal */}
       {currentUser && (
