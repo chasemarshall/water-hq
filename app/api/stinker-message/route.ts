@@ -18,6 +18,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing user or daysSince" }, { status: 400 });
     }
 
+    const isChase = user === "Chase";
+    const model = isChase ? "x-ai/grok-4.1-fast" : "google/gemini-2.0-flash-001";
+    const systemPrompt = isChase
+      ? "You generate a single short, ruthlessly savage message roasting a 15-year-old named Chase for not showering. Go absolutely unhinged — no mercy, no filter. Think Xbox lobby meets Comedy Central roast. Be brutal but ultimately funny. Output ONLY a JSON object with three fields: emoji (a single creative emoji — NEVER use 🦨, pick something unexpected and savage), title (2-4 words, ALL CAPS), body (1-2 sentences, savage and funny). No markdown, no code fences, just the raw JSON object."
+      : "You generate a single short, funny, snarky message shaming someone for not showering. The message is for a family shower coordination app called Water HQ. Be playful and creative — think sibling roast energy. Output ONLY a JSON object with three fields: emoji (a single creative emoji — NEVER use 🦨, pick something unexpected and funny like 🧀🥦🗑️🪳🧟💩🌵🐀🧄🫠 or anything else creative), title (2-4 words, ALL CAPS), body (1 sentence, casual tone). No markdown, no code fences, just the raw JSON object.";
+
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -25,12 +31,9 @@ export async function POST(req: NextRequest) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.0-flash-001",
+        model,
         messages: [
-          {
-            role: "system",
-            content: "You generate a single short, funny, snarky message shaming someone for not showering. The message is for a family shower coordination app called Water HQ. Be playful and creative — think sibling roast energy. Output ONLY a JSON object with three fields: emoji (a single creative emoji — NEVER use 🦨, pick something unexpected and funny like 🧀🥦🗑️🪳🧟💩🌵🐀🧄🫠 or anything else creative), title (2-4 words, ALL CAPS), body (1 sentence, casual tone). No markdown, no code fences, just the raw JSON object.",
-          },
+          { role: "system", content: systemPrompt },
           {
             role: "user",
             content: `${user} hasn't showered in ${daysSince} days. Generate a unique, funny shame message.`,
