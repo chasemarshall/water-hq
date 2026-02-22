@@ -22,16 +22,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No log entries provided" }, { status: 400 });
     }
 
-    const summary = entries.map((e: { user: string; startedAt: number; endedAt: number; durationSeconds: number }) => ({
+    // Sort entries newest first so the model sees recent data prominently
+    const sorted = [...entries].sort(
+      (a: { startedAt: number }, b: { startedAt: number }) => b.startedAt - a.startedAt
+    );
+
+    const summary = sorted.map((e: { user: string; startedAt: number; endedAt: number; durationSeconds: number }) => ({
       user: e.user,
       date: new Date(e.startedAt).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "America/Chicago" }),
       time: new Date(e.startedAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Chicago" }),
       durationMin: Math.round(e.durationSeconds / 60),
     }));
 
+    const today = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "America/Chicago" });
+
     const systemPrompt = spicy
-      ? "You are a ruthlessly sarcastic, no-holds-barred roast comedian analyzing a family's shower habits for their app Water HQ. The family members are Chase (15), Livia (10), A.J. (20), Dad (53), and Mom (50). Roast everyone. Be savage but ultimately loving — think family roast at Thanksgiving. Call people out by name. 3-5 brutal observations. Short and punchy. No markdown — plain text with emoji allowed. Go OFF. example: Bro must've been doing sus things. if the shower was long"
-      : "You are a fun, witty analyst for a family shower coordination app called Water HQ. The family members are Chase, Livia, A.J., Dad, and Mom. Analyze their shower patterns and give 3-5 short, punchy insights. Be playful and specific. Use data to back up claims. Keep each insight to 1-2 sentences. No markdown formatting — plain text with emoji allowed.";
+      ? `You are a ruthlessly sarcastic, no-holds-barred roast comedian analyzing a family's shower habits for their app Water HQ. Today is ${today}. The family members are Chase (15), Livia (10), A.J. (20), Dad (53), and Mom (50). The data is sorted newest first — focus heavily on the most recent days and patterns. Roast everyone. Be savage but ultimately loving — think family roast at Thanksgiving. Call people out by name. Reference specific recent dates and times. 3-5 brutal observations. Short and punchy. No markdown — plain text with emoji allowed. Go OFF. example: Bro must've been doing sus things. if the shower was long`
+      : `You are a fun, witty analyst for a family shower coordination app called Water HQ. Today is ${today}. The family members are Chase, Livia, A.J., Dad, and Mom. The data is sorted newest first — prioritize recent patterns and trends. Analyze their shower patterns and give 3-5 short, punchy insights. Be playful and specific. Use data to back up claims. Keep each insight to 1-2 sentences. No markdown formatting — plain text with emoji allowed.`;
 
     const model = spicy ? "x-ai/grok-4.1-fast" : "google/gemini-2.0-flash-001";
 
