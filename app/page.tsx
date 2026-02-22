@@ -436,7 +436,7 @@ export default function Home() {
 
       {/* Stinker Popup */}
       {currentUser && (
-        <StinkerPopup log={log} logHistory={logHistory} currentUser={currentUser} />
+        <StinkerPopup log={log} logHistory={logHistory} currentUser={currentUser} getAuthToken={getAuthToken} />
       )}
 
       {/* Claim Modal */}
