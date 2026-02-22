@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
         messages: [
           {
             role: "system",
-            content: "You generate a single short, funny, snarky message shaming someone for not showering. The message is for a family shower coordination app called Water HQ. Be playful and creative — think sibling roast energy. Output ONLY a JSON object with three fields: emoji (single emoji), title (2-4 words, ALL CAPS), body (1 sentence, casual tone). No markdown, no code fences, just the raw JSON object.",
+            content: "You generate a single short, funny, snarky message shaming someone for not showering. The message is for a family shower coordination app called Water HQ. Be playful and creative — think sibling roast energy. Output ONLY a JSON object with three fields: emoji (a single creative emoji — NEVER use 🦨, pick something unexpected and funny like 🧀🥦🗑️🪳🧟💩🌵🐀🧄🫠 or anything else creative), title (2-4 words, ALL CAPS), body (1 sentence, casual tone). No markdown, no code fences, just the raw JSON object.",
           },
           {
             role: "user",
